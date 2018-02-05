@@ -5,21 +5,57 @@ import (
 	"log"
 	"strconv"
 	"github.com/shopspring/decimal"
+	"fmt"
 )
 
 type Logger interface {
-	QuoteServer(string, int, *QuoteReply) error
-	AccountTransaction(server string, transNum int, action string, user interface{}, funds interface{}) error
+	QuoteServer(server string, transNum  int, reply *QuoteReply)
+	AccountTransaction(server string, transNum int, action string, user interface{}, funds interface{})
 	SystemError(server string, transNum int, command string, user interface{}, stock interface{}, filename interface{},
-	funds interface{}, errorMsg interface{}) error
+	funds interface{}, errorMsg interface{})
+	SystemEvent(server string, transNum int, command string, username interface{}, stock interface{},
+	filename interface{}, funds interface{})
+	DumpLog(filename string, username interface{})
 }
 
 type AuditLogger struct {
 	addr string
 }
 
+func (al AuditLogger) DumpLog(filename string, username interface{}) {
+	params := map[string]string{
+		"filename": filename,
+	}
+	if username != nil {
+		params["username"] = username.(string)
+	}
+	al.SendLog("/dumpLog", params)
+}
+
+func (al AuditLogger) SystemEvent(server string, transNum int, command string, username interface{}, stock interface{},
+	filename interface{}, funds interface{}) {
+	params := map[string]string {
+		"server": server,
+		"transactionNum": strconv.Itoa(transNum),
+		"command": command,
+	}
+	if username != nil {
+		params["username"] = username.(string)
+	}
+	if stock != nil {
+		params["stockSymbol"] = stock.(string)
+	}
+	if filename != nil {
+		params["filename"] = filename.(string)
+	}
+	if funds != nil {
+		params["funds"] = funds.(decimal.Decimal).String()
+	}
+	al.SendLog("/systemEvent", params)
+}
+
 func (al AuditLogger) SystemError(server string, transNum int, command string, user interface{}, stock interface{}, filename interface{},
-	funds interface{}, errorMsg interface{}) error{
+	funds interface{}, errorMsg interface{}) {
 	params := map[string]string {
 		"server": server,
 		"transactionNum": strconv.Itoa(transNum),
@@ -40,10 +76,11 @@ func (al AuditLogger) SystemError(server string, transNum int, command string, u
 	if errorMsg != nil {
 		params["errormessage"] = errorMsg.(string)
 	}
-	return al.SendLog("/errorEvent", params)
+	al.SendLog("/errorEvent", params)
 }
 
-func (al AuditLogger) AccountTransaction(server string, transactionNum int, action string, user interface{}, funds interface{}) error {
+
+func (al AuditLogger) AccountTransaction(server string, transactionNum int, action string, user interface{}, funds interface{}) {
 	params := map[string]string {
 		"server":  server,
 		"transactionNum": strconv.Itoa(transactionNum),
@@ -55,11 +92,11 @@ func (al AuditLogger) AccountTransaction(server string, transactionNum int, acti
 	if funds !=  nil {
 		params["funds"] = funds.(decimal.Decimal).String()
 	}
-	return al.SendLog("/accountTransaction", params)
+	al.SendLog("/accountTransaction", params)
 }
 
 
-func (al AuditLogger) QuoteServer(server string, transactionNum int, rep *QuoteReply) error {
+func (al AuditLogger) QuoteServer(server string, transactionNum int, rep *QuoteReply) {
 	params := map[string]string {
 		"server":  server,
 		"transactionNum": strconv.Itoa(transactionNum),
@@ -69,10 +106,10 @@ func (al AuditLogger) QuoteServer(server string, transactionNum int, rep *QuoteR
 		"quoteServerTime": strconv.FormatUint(rep.time, 10),
 		"cryptoKey": rep.key,
 	}
-	return al.SendLog("/quoteServer", params)
+	al.SendLog("/quoteServer", params)
 }
 
-func (al AuditLogger) SendLog(slash string, params map[string]string) error {
+func (al AuditLogger) SendLog(slash string, params map[string]string) {
 	req, err := http.NewRequest("GET", al.addr + slash, nil)
 	if err != nil {
 		log.Print(err)
@@ -86,5 +123,7 @@ func (al AuditLogger) SendLog(slash string, params map[string]string) error {
 	req.URL.RawQuery = url.Encode()
 	client := &http.Client{}
 	_, err = client.Do(req)
-	return err
+	if  err != nil {
+		fmt.Printf("Error connecting to the audit server for  %s command:  %s", slash, err.Error())
+	}
 }

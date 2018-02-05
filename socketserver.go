@@ -92,7 +92,7 @@ func (s SocketServer) handleRequest(conn net.Conn) {
 	}
 	function, params := s.getRoute(string(buf[:]))
 	if function == nil {
-		fmt.Println("Error: command not implemented '%s'", string(buf[:]))
+		fmt.Printf("Error: command not implemented '%s'\n", string(buf[:]))
 		return
 	}
 	s.transNum++

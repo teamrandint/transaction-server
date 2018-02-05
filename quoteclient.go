@@ -60,10 +60,7 @@ func (q *QuoteClient) Query(u string, s string, transNum int) (decimal.Decimal, 
 		return decimal.Decimal{}, err
 	}
 	reply := q.getReply(message)
-	err = q.logger.QuoteServer(q.name, transNum, reply)
-	if err != nil {
-		fmt.Print("Error logging to the audit server")
-	}
+	q.logger.QuoteServer(q.name, transNum, reply)
 	q.cache.Set(reply.stock, reply.quote, cache.DefaultExpiration)
 	return reply.quote, nil
 }

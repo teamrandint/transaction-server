@@ -1,9 +1,52 @@
 package tests
 
-import "github.com/shopspring/decimal"
+import (
+	"github.com/shopspring/decimal"
+	"seng468/transaction-server"
+)
 
 type MockDatabase struct {
 	userFunds map[string]decimal.Decimal
+}
+
+func (db MockDatabase) GetStock(user string, stock string) (int, error) {
+	panic("implement me")
+}
+
+func (db MockDatabase) RemoveStock(user string, stock string, amount int) error {
+	panic("implement me")
+}
+
+func (db MockDatabase) PushSell(user string, stock string, cost decimal.Decimal, shares int) error {
+	panic("implement me")
+}
+
+func (db MockDatabase) PopSell(user string) (stock string, cost decimal.Decimal, shares int, err error) {
+	panic("implement me")
+}
+
+func (db MockDatabase) AddBuyTrigger(user string, stock string, trigger *transactionserver.Trigger) error {
+	panic("implement me")
+}
+
+func (db MockDatabase) GetBuyTrigger(user string, stock string) (*transactionserver.Trigger, error) {
+	panic("implement me")
+}
+
+func (db MockDatabase) RemoveBuyTrigger(user string, stock string) (*transactionserver.Trigger, error) {
+	panic("implement me")
+}
+
+func (db MockDatabase) AddSellTrigger(user string, stock string, trigger *transactionserver.Trigger) error {
+	panic("implement me")
+}
+
+func (db MockDatabase) GetSellTrigger(user string, stock string) (*transactionserver.Trigger, error) {
+	panic("implement me")
+}
+
+func (db MockDatabase) RemoveSellTrigger(user string, stock string) (*transactionserver.Trigger, error) {
+	panic("implement me")
 }
 
 func NewMockDatabase() MockDatabase {

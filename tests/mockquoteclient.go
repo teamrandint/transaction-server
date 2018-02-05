@@ -9,8 +9,8 @@ type MockQuoteClient struct {
 	stockMap map[string]decimal.Decimal
 }
 
-func (qc MockQuoteClient) Query(user string, stock string, transNum int) (decimal.Decimal, error) {
-	if val, ok := qc.stockMap[user]; ok {
+func (qc *MockQuoteClient) Query(user string, stock string, transNum int) (decimal.Decimal, error) {
+	if val, ok := qc.stockMap[stock]; ok {
 		return val, nil
 	}
 	return decimal.Decimal{}, errors.New("stock not mocked")
@@ -22,7 +22,7 @@ func NewMockQuoteClient() *MockQuoteClient {
 	}
 }
 
-func (qc MockQuoteClient) addRule(stock string, amount decimal.Decimal) {
+func (qc *MockQuoteClient) addRule(stock string, amount decimal.Decimal) {
 	qc.stockMap[stock] = amount
 }
 
