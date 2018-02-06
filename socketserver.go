@@ -12,8 +12,8 @@ type Server interface {
 }
 
 type SocketServer struct {
-	addr string
-	routeMap map[string]func(args... string) string
+	addr     string
+	routeMap map[string]func(args ...string) string
 	transNum int
 }
 
@@ -23,8 +23,8 @@ func (s SocketServer) TransactionNum() int {
 
 func NewSocketServer(addr string) SocketServer {
 	return SocketServer{
-		addr: addr,
-		routeMap: make(map[string]func(args... string) string),
+		addr:     addr,
+		routeMap: make(map[string]func(args ...string) string),
 		transNum: 0,
 	}
 }
@@ -41,11 +41,10 @@ func getParamsFromRegex(regex string, msg string) []string {
 
 func (s SocketServer) buildRoutePattern(pattern string) string {
 	re := regexp.MustCompile(`(<\w+>)`)
-	return re.ReplaceAllString(pattern,`(?P\1.+)`)
+	return re.ReplaceAllString(pattern, `(?P\1.+)`)
 }
 
-
-func (s SocketServer) route(pattern string, f func(args... string) string) {
+func (s SocketServer) route(pattern string, f func(args ...string) string) {
 	regex := s.buildRoutePattern(pattern)
 	s.routeMap[regex] = f
 }
@@ -69,7 +68,7 @@ func (s SocketServer) run() {
 	}
 }
 
-func (s SocketServer) getRoute(command string) (func(args... string) string, []string) {
+func (s SocketServer) getRoute(command string) (func(args ...string) string, []string) {
 	for regex, function := range s.routeMap {
 		re, _ := regexp.Compile(regex)
 		if re.MatchString(command) {

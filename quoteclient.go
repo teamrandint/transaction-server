@@ -1,14 +1,15 @@
 package transactionserver
 
 import (
+	"bufio"
+	"fmt"
+	"net"
+	"regexp"
+	"strconv"
+	"time"
+
 	"github.com/patrickmn/go-cache"
 	"github.com/shopspring/decimal"
-	"regexp"
-	"time"
-	"bufio"
-	"net"
-	"fmt"
-	"strconv"
 )
 
 type QuoteClientI interface {
@@ -16,13 +17,12 @@ type QuoteClientI interface {
 }
 
 type QuoteClient struct {
-	name    string
-	addr    string
-	cache   *cache.Cache
-	re      *regexp.Regexp
-	logger  Logger
+	name   string
+	addr   string
+	cache  *cache.Cache
+	re     *regexp.Regexp
+	logger Logger
 }
-
 
 type QuoteReply struct {
 	quote decimal.Decimal
@@ -35,10 +35,10 @@ type QuoteReply struct {
 func NewQuoteClient(logger Logger) *QuoteClient {
 	re := regexp.MustCompile("(?P<quote>.+),(?P<stock>.+),(?P<user>.+),(?P<time>.+),(?P<key>.+)")
 	return &QuoteClient{
-		name:    "quoteserve",
-		addr:    "quoteserve.seng:4444",
-		cache:   cache.New(time.Minute, time.Minute),
-		re:      re,
+		name:   "quoteserve",
+		addr:   "quoteserve.seng:4444",
+		cache:  cache.New(time.Minute, time.Minute),
+		re:     re,
 		logger: logger,
 	}
 }
@@ -50,7 +50,7 @@ func (q *QuoteClient) Query(u string, s string, transNum int) (decimal.Decimal, 
 		return d, nil
 	}
 	conn, err := net.Dial("tcp", q.addr)
-	if  err != nil {
+	if err != nil {
 		return decimal.Decimal{}, err
 	}
 	request := fmt.Sprintf("%s,%s\n", s, u)
