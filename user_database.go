@@ -8,6 +8,8 @@ import (
 
 // UserDatabase holds all of the supported database commands
 type UserDatabase interface {
+	GetUserInfo(user string) (info string, err error)
+
 	AddFunds(string, decimal.Decimal) error
 	GetFunds(string) (decimal.Decimal, error)
 	RemoveFunds(string, decimal.Decimal) error
@@ -33,6 +35,11 @@ type UserDatabase interface {
 // RedisDatabase holds the address of the redisDB
 type RedisDatabase struct {
 	addr string
+}
+
+// GetUserInfo returns all of a users information in the database
+func (u RedisDatabase) GetUserInfo(user string) (info string, err error) {
+	panic("implement me")
 }
 
 // AddSellTrigger adds a sell trigger to the redisDB
