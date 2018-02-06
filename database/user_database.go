@@ -65,12 +65,12 @@ func (u RedisDatabase) AddBuyTrigger(user string, stock string, t *triggers.Trig
 }
 
 // RemoveBuyTrigger removes a users buy trigger for the corresponding stock
-func (u RedisDatabase) RemoveBuyTrigger(user string, stock string) (*Trigger, error) {
+func (u RedisDatabase) RemoveBuyTrigger(user string, stock string) (*triggers.Trigger, error) {
 	panic("implement me")
 }
 
 // GetBuyTrigger gets a user's trigger for the specified stock, if one exists
-func (u RedisDatabase) GetBuyTrigger(user string, stock string) (*Trigger, error) {
+func (u RedisDatabase) GetBuyTrigger(user string, stock string) (*triggers.Trigger, error) {
 	panic("implement me")
 }
 

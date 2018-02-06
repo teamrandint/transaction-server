@@ -20,7 +20,7 @@ type Trigger struct {
 	cancel        chan bool
 }
 
-func NewBuyTrigger(user string, stock string, quoteClient QuoteClientI,
+func NewBuyTrigger(user string, stock string, quoteClient quoteclient.QuoteClientI,
 	buySellAmount decimal.Decimal, action func(*Trigger)) *Trigger {
 	return &Trigger{
 		User:          user,
@@ -32,7 +32,7 @@ func NewBuyTrigger(user string, stock string, quoteClient QuoteClientI,
 	}
 }
 
-func NewSellTrigger(user string, stock string, quoteClient QuoteClientI,
+func NewSellTrigger(user string, stock string, quoteClient quoteclient.QuoteClientI,
 	buySellAmount decimal.Decimal, action func(trigger *Trigger)) *Trigger {
 	return &Trigger{
 		User:          user,

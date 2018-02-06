@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"seng468/transaction-server/database"
 	"seng468/transaction-server/logger"
+	"seng468/transaction-server/quote"
 	"seng468/transaction-server/socketserver"
+	"seng468/transaction-server/trigger"
 
 	"github.com/shopspring/decimal"
 )
@@ -20,7 +22,11 @@ type TransactionServer struct {
 	RunningTriggers []*triggers.Trigger
 }
 
-func main(serverAddr string, databaseAddr string, auditAddr string) *TransactionServer {
+func main() {
+	serverAddr := "localhost:8888"
+	databaseAddr := "localhost:6379"
+	auditAddr := "localhost:8080"
+
 	server := NewSocketServer(serverAddr)
 
 	database := &RedisDatabase{
@@ -61,7 +67,6 @@ func main(serverAddr string, databaseAddr string, auditAddr string) *Transaction
 	server.route("DUMPLOG,<user>,<filename>", ts.DumpLogUser)
 	server.route("DUMPLOG,<filename>", ts.DumpLog)
 	server.route("DISPLAY_SUMMARY,<user>", ts.DisplaySummary)
-	return ts
 }
 
 // Add the given amount of money to the user's account
