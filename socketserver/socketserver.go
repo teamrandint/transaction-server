@@ -41,7 +41,7 @@ func getParamsFromRegex(regex string, msg string) []string {
 
 func (s SocketServer) buildRoutePattern(pattern string) string {
 	re := regexp.MustCompile(`(<\w+>)`)
-	return re.ReplaceAllString(pattern, `(?P\1.+)`)
+	return re.ReplaceAllString(pattern, `(.+)`) // `(?P\1.+)`
 }
 
 func (s SocketServer) Route(pattern string, f func(args ...string) string) {
@@ -70,7 +70,11 @@ func (s SocketServer) Run() {
 
 func (s SocketServer) getRoute(command string) (func(args ...string) string, []string) {
 	for regex, function := range s.routeMap {
-		re, _ := regexp.Compile(regex)
+		re, err := regexp.Compile(regex)
+		if err != nil {
+			fmt.Printf(regex)
+			panic(err)
+		}
 		if re.MatchString(command) {
 			return function, getParamsFromRegex(regex, command)
 		}
