@@ -1,10 +1,11 @@
-package transactionserver
+package quoteclient
 
 import (
 	"bufio"
 	"fmt"
 	"net"
 	"regexp"
+	"seng468/transaction-server/logger"
 	"strconv"
 	"time"
 
@@ -21,7 +22,7 @@ type QuoteClient struct {
 	addr   string
 	cache  *cache.Cache
 	re     *regexp.Regexp
-	logger Logger
+	logger logger.Logger
 }
 
 type QuoteReply struct {
@@ -32,7 +33,7 @@ type QuoteReply struct {
 	key   string
 }
 
-func NewQuoteClient(logger Logger) *QuoteClient {
+func NewQuoteClient(logger logger.Logger) *QuoteClient {
 	re := regexp.MustCompile("(?P<quote>.+),(?P<stock>.+),(?P<user>.+),(?P<time>.+),(?P<key>.+)")
 	return &QuoteClient{
 		name:   "quoteserve",
@@ -60,7 +61,8 @@ func (q *QuoteClient) Query(u string, s string, transNum int) (decimal.Decimal, 
 		return decimal.Decimal{}, err
 	}
 	reply := q.getReply(message)
-	q.logger.QuoteServer(q.name, transNum, reply)
+	q.logger.QuoteServer(q.name, transNum, reply.quote.String(), reply.stock,
+		reply.user, reply.time, reply.key)
 	q.cache.Set(reply.stock, reply.quote, cache.DefaultExpiration)
 	return reply.quote, nil
 }

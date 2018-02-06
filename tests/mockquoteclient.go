@@ -1,8 +1,9 @@
 package tests
 
 import (
-	"github.com/shopspring/decimal"
 	"errors"
+
+	"github.com/shopspring/decimal"
 )
 
 type MockQuoteClient struct {
@@ -25,4 +26,3 @@ func NewMockQuoteClient() *MockQuoteClient {
 func (qc *MockQuoteClient) addRule(stock string, amount decimal.Decimal) {
 	qc.stockMap[stock] = amount
 }
-

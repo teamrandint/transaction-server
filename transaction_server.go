@@ -1,7 +1,10 @@
-package transactionserver
+package main
 
 import (
 	"fmt"
+	"seng468/transaction-server/database"
+	"seng468/transaction-server/logger"
+	"seng468/transaction-server/socketserver"
 
 	"github.com/shopspring/decimal"
 )
@@ -10,14 +13,14 @@ import (
 type TransactionServer struct {
 	Name            string
 	Addr            string
-	Server          Server
-	Logger          Logger
-	UserDatabase    UserDatabase
-	QuoteClient     QuoteClientI
-	RunningTriggers []*Trigger
+	Server          socketserver.Server
+	Logger          logger.Logger
+	UserDatabase    database.UserDatabase
+	QuoteClient     quoteclient.QuoteClientI
+	RunningTriggers []*triggers.Trigger
 }
 
-func NewTransactionServer(serverAddr string, databaseAddr string, auditAddr string) *TransactionServer {
+func main(serverAddr string, databaseAddr string, auditAddr string) *TransactionServer {
 	server := NewSocketServer(serverAddr)
 
 	database := &RedisDatabase{
@@ -28,7 +31,7 @@ func NewTransactionServer(serverAddr string, databaseAddr string, auditAddr stri
 		addr: auditAddr,
 	}
 
-	running_triggers := []*Trigger{}
+	runningTriggers := []*Trigger{}
 
 	quoteClient := NewQuoteClient(logger)
 
