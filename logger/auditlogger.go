@@ -29,7 +29,7 @@ type Logger interface {
 }
 
 type AuditLogger struct {
-	addr string
+	Addr string
 }
 
 func (al AuditLogger) DumpLog(filename string, username interface{}) {
@@ -119,7 +119,7 @@ func (al AuditLogger) QuoteServer(server string, transactionNum int,
 }
 
 func (al AuditLogger) SendLog(slash string, params map[string]string) {
-	req, err := http.NewRequest("GET", al.addr+slash, nil)
+	req, err := http.NewRequest("GET", al.Addr+slash, nil)
 	if err != nil {
 		log.Print(err)
 	}

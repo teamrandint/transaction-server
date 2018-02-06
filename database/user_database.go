@@ -35,7 +35,7 @@ type UserDatabase interface {
 
 // RedisDatabase holds the address of the redisDB
 type RedisDatabase struct {
-	addr string
+	Addr string
 }
 
 // GetUserInfo returns all of a users information in the database

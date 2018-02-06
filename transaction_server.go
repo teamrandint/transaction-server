@@ -27,19 +27,11 @@ func main() {
 	databaseAddr := "localhost:6379"
 	auditAddr := "localhost:8080"
 
-	server := NewSocketServer(serverAddr)
-
-	database := &RedisDatabase{
-		addr: databaseAddr,
-	}
-
-	logger := AuditLogger{
-		addr: auditAddr,
-	}
-
+	server := socketserver.NewSocketServer(serverAddr)
+	database := &database.RedisDatabase{Addr: databaseAddr}
+	logger := logger.AuditLogger{Addr: auditAddr}
 	runningTriggers := []*Trigger{}
-
-	quoteClient := NewQuoteClient(logger)
+	quoteClient := quote.NewQuoteClient(logger)
 
 	ts := &TransactionServer{
 		Name:            "transactionserve",
@@ -48,7 +40,7 @@ func main() {
 		Logger:          logger,
 		UserDatabase:    database,
 		QuoteClient:     quoteClient,
-		RunningTriggers: running_triggers,
+		RunningTriggers: runningTriggers,
 	}
 
 	server.route("ADD,<user>,<amount>", ts.Add)
@@ -67,6 +59,7 @@ func main() {
 	server.route("DUMPLOG,<user>,<filename>", ts.DumpLogUser)
 	server.route("DUMPLOG,<filename>", ts.DumpLog)
 	server.route("DISPLAY_SUMMARY,<user>", ts.DisplaySummary)
+	server.run()
 }
 
 // Add the given amount of money to the user's account
