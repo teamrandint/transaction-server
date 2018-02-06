@@ -44,12 +44,12 @@ func (s SocketServer) buildRoutePattern(pattern string) string {
 	return re.ReplaceAllString(pattern, `(?P\1.+)`)
 }
 
-func (s SocketServer) route(pattern string, f func(args ...string) string) {
+func (s SocketServer) Route(pattern string, f func(args ...string) string) {
 	regex := s.buildRoutePattern(pattern)
 	s.routeMap[regex] = f
 }
 
-func (s SocketServer) run() {
+func (s SocketServer) Run() {
 	// Listen for incoming connections.
 	l, err := net.Listen("tcp", s.addr)
 	if err != nil {
