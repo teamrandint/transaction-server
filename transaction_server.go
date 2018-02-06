@@ -6,6 +6,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// TransactionServer holds the main components of the module itself
 type TransactionServer struct {
 	Name            string
 	Addr            string
@@ -60,8 +61,8 @@ func NewTransactionServer(serverAddr string, databaseAddr string, auditAddr stri
 	return ts
 }
 
+// Add the given amount of money to the user's account
 // Params: user, amount
-// Purpose: Add the given amount of money to the user's account
 // PostCondition: the user's account is increased by the amount of money specified
 func (ts TransactionServer) Add(params ...string) string {
 	user := params[0]
@@ -80,8 +81,8 @@ func (ts TransactionServer) Add(params ...string) string {
 	return "1"
 }
 
+// Quote gets the current quote for the stock for the specified user
 // Params: user, stock
-// Purpose: Get the current quote for the stock for the specified user
 // PostCondition: the current price of the specified stock is displayed to the user
 func (ts TransactionServer) Quote(params ...string) string {
 	user := params[0]
@@ -95,8 +96,8 @@ func (ts TransactionServer) Quote(params ...string) string {
 	return dec.StringFixed(2)
 }
 
+// Buy the dollar amount of the stock for the specified user at the current price.
 // Params: user, stock, amount
-// Purpose: Buy the dollar amount of the stock for the specified user at the current price.
 // PreCondition: The user's account must be greater or equal to the amount of the purchase.
 // PostCondition: The user is asked to confirm or cancel the transaction
 func (ts TransactionServer) Buy(params ...string) string {
@@ -144,8 +145,8 @@ func (ts TransactionServer) Buy(params ...string) string {
 	return "1"
 }
 
+// CommitBuy commits the most recently executed BUY command
 // Params: user
-// Purpose:  Commits the most recently executed BUY command
 // Pre-Conditions: The user must have executed a BUY command within the previous 60 seconds
 // Post-Conditions:
 // 		(a) the user's cash account is decreased by the amount user to purchase the stock
@@ -169,8 +170,8 @@ func (ts TransactionServer) CommitBuy(params ...string) string {
 	return "1"
 }
 
+// CancelBuy cancels the most recently executed BUY Command
 // Param: user
-// Purpose: Cancels the most recently executed BUY Command
 // Pre-Condition: The user must have executed a BUY command within the previous 60 seconds
 // Post-Condition: The last BUY command is canceled and any allocated system resources are reset and released.
 func (ts TransactionServer) CancelBuy(params ...string) string {
@@ -191,9 +192,11 @@ func (ts TransactionServer) CancelBuy(params ...string) string {
 	return "1"
 }
 
+// Sell the specified dollar mount of the stock currently held by the specified
+// user at the current price.
 // Param: user, stock, amount
-// Purpose: Sell the specified dollar mount of the stock currently held by the specified user at the current price.
-// Pre-condition: The user's account for the given stock must be greater than or equal to the amount being sold.
+// Pre-condition: The user's account for the given stock must be greater than
+// 		or equal to the amount being sold.
 // Post-condition: The user is asked to confirm or cancel the given transaction
 func (ts TransactionServer) Sell(params ...string) string {
 	user := params[0]
@@ -233,8 +236,8 @@ func (ts TransactionServer) Sell(params ...string) string {
 	return "-1"
 }
 
+// CommitSell commits the most recently executed SELL command
 // Params: user
-// Purpose: Commits the most recently executed SELL command
 // Pre-Conditions: The user must have executed a SELL command within the previous 60 seconds
 // Post-Conditions:
 // 		(a) the user's account for the given stock is decremented by the sale amount
@@ -259,8 +262,8 @@ func (ts TransactionServer) CommitSell(params ...string) string {
 
 }
 
+// CancelSell cancels the most recently executed SELL Command
 // Params: user
-// Purpose: Cancels the most recently executed SELL Command
 // Pre-conditions: The user must have executed a SELL command within the previous 60 seconds
 // Post-conditions: The last SELL command is canceled and any allocated system resources are reset and released.
 func (ts TransactionServer) CancelSell(params ...string) string {
@@ -281,13 +284,17 @@ func (ts TransactionServer) CancelSell(params ...string) string {
 	return "1"
 }
 
+// SetBuyAmount sets a defined amount of the given stock to buy when the
+// current stock price is less than or equal to the BUY_TRIGGER
 // Params: user, stock, amount
-// Purpose: Sets a defined amount of the given stock to buy when the current stock price is less than or equal to the BUY_TRIGGER
-// Pre-condition: The user's cash account must be greater than or equal to the BUY amount at the time the transaction occurs
+// Pre-condition: The user's cash account must be greater than or equal to the
+//		BUY amount at the time the transaction occurs
 // Post-condition:
-// 		(a) a reserve account is created for the BUY transaction to hold the specified amount in reserve for when the transaction is triggered
+// 		(a) a reserve account is created for the BUY transaction to hold the
+//			specified amount in reserve for when the transaction is triggered
 // 		(b) the user's cash account is decremented by the specified amount
-// 		(c) when the trigger point is reached the user's stock account is updated to reflect the BUY transaction.
+// 		(c) when the trigger point is reached the user's stock account is
+//			updated to reflect the BUY transaction.
 func (ts TransactionServer) SetBuyAmount(params ...string) string {
 	user := params[0]
 	stock := params[1]
@@ -327,11 +334,12 @@ func (ts TransactionServer) SetBuyAmount(params ...string) string {
 	return "1"
 }
 
+// CancelSetBuy cancels a SET_BUY command issued for the given stock
 // Params: user, stock
-// Purpose: Cancels a SET_BUY command issued for the given stock
-// Pre-condition: The must have been a SET_BUY Command issued for the given stock by the user
+// The must have been a SET_BUY Command issued for the given stock by the user
 // Post-condition:
-// 		(a) All accounts are reset to the values they would have had had the SET_BUY Command not been issued
+// 		(a) All accounts are reset to the values they would have had had the
+//			SET_BUY Command not been issued
 // 		(b) the BUY_TRIGGER for the given user and stock is also canceled.
 func (ts TransactionServer) CancelSetBuy(params ...string) string {
 	user := params[0]
@@ -354,10 +362,13 @@ func (ts TransactionServer) CancelSetBuy(params ...string) string {
 	return "1"
 }
 
+// SetBuyTrigger sets the trigger point base on the current stock price when
+// any SET_BUY will execute.
 // Params: user, stock, amount
-// Purpose: Sets the trigger point base on the current stock price when any SET_BUY will execute.
-// Pre-conditions: The user must have specified a SET_BUY_AMOUNT prior to setting a SET_BUY_TRIGGER
-// Post-conditions: The set of the user's buy triggers is updated to include the specified trigger
+// Pre-conditions: The user must have specified a SET_BUY_AMOUNT prior to
+//		 setting a SET_BUY_TRIGGER
+// Post-conditions: The set of the user's buy triggers is updated to
+//		include the specified trigger
 func (ts TransactionServer) SetBuyTrigger(params ...string) string {
 	user := params[0]
 	stock := params[1]
@@ -377,10 +388,13 @@ func (ts TransactionServer) SetBuyTrigger(params ...string) string {
 	return "1"
 }
 
+// SetSellAmount sets a defined amount of the specified stock to sell when
+// the current stock price is equal or greater than the sell trigger point
 // Params: user, stock, amount
-// Purpose: Sets a defined amount of the specified stock to sell when the current stock price is equal or greater than the sell trigger point
-// Pre-conditions: The user must have the specified amount of stock in their account for that stock.
-// Post-conditions: A trigger is initialized for this username/stock symbol combination, but is not complete until SET_SELL_TRIGGER is executed.
+// Pre-conditions: The user must have the specified amount of stock in their
+//		account for that stock.
+// Post-conditions: A trigger is initialized for this username/stock symbol
+//		combination, but is not complete until SET_SELL_TRIGGER is executed.
 func (ts TransactionServer) SetSellAmount(params ...string) string {
 	user := params[0]
 	stock := params[1]
@@ -422,13 +436,18 @@ func (ts TransactionServer) SetSellAmount(params ...string) string {
 	return "1"
 }
 
+// SetSellTrigger sets the stock price trigger point for executing any
+// SET_SELL triggers associated with the given stock and user
 // Params: user, stock, amount
-// Purpose: Sets the stock price trigger point for executing any SET_SELL triggers associated with the given stock and user
-// Pre-Conditions: The user must have specified a SET_SELL_AMOUNT prior to setting a SET_SELL_TRIGGER
+// Pre-Conditions: The user must have specified a SET_SELL_AMOUNT prior to
+//		setting a SET_SELL_TRIGGER
 // Post-Conditions:
-// 		(a) a reserve account is created for the specified amount of the given stock
-// 		(b) the user account for the given stock is reduced by the max number of stocks that could be purchased and
-// 		(c) the set of the user's sell triggers is updated to include the specified trigger.
+// 		(a) a reserve account is created for the specified amount of the
+//			given stock
+// 		(b) the user account for the given stock is reduced by the max number
+//			of stocks that could be purchased and
+// 		(c) the set of the user's sell triggers is updated to include the
+//			specified trigger.
 func (ts TransactionServer) SetSellTrigger(params ...string) string {
 	user := params[0]
 	stock := params[1]
@@ -465,8 +484,7 @@ func (ts TransactionServer) SetSellTrigger(params ...string) string {
 
 }
 
-// Params: user, stock
-// Purpose: Cancels the SET_SELL associated with the given stock and user
+// CancelSetSell cancels the SET_SELL associated with the given stock and user
 // Pre-Conditions: The user must have had a previously set SET_SELL for the given stock
 // Post-Conditions:
 // 		(a) The set of the user's sell triggers is updated to remove the sell trigger associated with the specified stock
@@ -495,7 +513,9 @@ func (ts TransactionServer) CancelSetSell(params ...string) string {
 
 // DumpLogUser Print out the history of the users transactions
 // to the user specified file
-func (ts TransactionServer) DumpLogUser(user string, filename string) string {
+func (ts TransactionServer) DumpLogUser(params ...string) string {
+	filename := params[0]
+	user := params[1]
 	ts.Logger.DumpLog(filename, user)
 	return "1"
 }
@@ -512,7 +532,7 @@ func (ts TransactionServer) DumpLog(params ...string) string {
 // DisplaySummary provides a summary to the client of the given user's
 // transaction history and the current status of their accounts as well
 // as any set buy or sell triggers and their parameters.
-func (ts TransactionServer) DisplaySummary(user string) string {
+func (ts TransactionServer) DisplaySummary(params ...string) string {
 	panic("not implemented")
 }
 
