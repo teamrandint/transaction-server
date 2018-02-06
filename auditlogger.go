@@ -1,20 +1,21 @@
 package transactionserver
 
 import (
-	"net/http"
-	"log"
-	"strconv"
-	"github.com/shopspring/decimal"
 	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+
+	"github.com/shopspring/decimal"
 )
 
 type Logger interface {
-	QuoteServer(server string, transNum  int, reply *QuoteReply)
+	QuoteServer(server string, transNum int, reply *QuoteReply)
 	AccountTransaction(server string, transNum int, action string, user interface{}, funds interface{})
 	SystemError(server string, transNum int, command string, user interface{}, stock interface{}, filename interface{},
-	funds interface{}, errorMsg interface{})
+		funds interface{}, errorMsg interface{})
 	SystemEvent(server string, transNum int, command string, username interface{}, stock interface{},
-	filename interface{}, funds interface{})
+		filename interface{}, funds interface{})
 	DumpLog(filename string, username interface{})
 }
 
@@ -34,10 +35,10 @@ func (al AuditLogger) DumpLog(filename string, username interface{}) {
 
 func (al AuditLogger) SystemEvent(server string, transNum int, command string, username interface{}, stock interface{},
 	filename interface{}, funds interface{}) {
-	params := map[string]string {
-		"server": server,
+	params := map[string]string{
+		"server":         server,
 		"transactionNum": strconv.Itoa(transNum),
-		"command": command,
+		"command":        command,
 	}
 	if username != nil {
 		params["username"] = username.(string)
@@ -56,10 +57,10 @@ func (al AuditLogger) SystemEvent(server string, transNum int, command string, u
 
 func (al AuditLogger) SystemError(server string, transNum int, command string, user interface{}, stock interface{}, filename interface{},
 	funds interface{}, errorMsg interface{}) {
-	params := map[string]string {
-		"server": server,
+	params := map[string]string{
+		"server":         server,
 		"transactionNum": strconv.Itoa(transNum),
-		"command": command,
+		"command":        command,
 	}
 	if user != nil {
 		params["username"] = user.(string)
@@ -79,38 +80,36 @@ func (al AuditLogger) SystemError(server string, transNum int, command string, u
 	al.SendLog("/errorEvent", params)
 }
 
-
 func (al AuditLogger) AccountTransaction(server string, transactionNum int, action string, user interface{}, funds interface{}) {
-	params := map[string]string {
-		"server":  server,
+	params := map[string]string{
+		"server":         server,
 		"transactionNum": strconv.Itoa(transactionNum),
-		"action": action,
+		"action":         action,
 	}
 	if user != nil {
 		params["username"] = user.(string)
 	}
-	if funds !=  nil {
+	if funds != nil {
 		params["funds"] = funds.(decimal.Decimal).String()
 	}
 	al.SendLog("/accountTransaction", params)
 }
 
-
 func (al AuditLogger) QuoteServer(server string, transactionNum int, rep *QuoteReply) {
-	params := map[string]string {
-		"server":  server,
-		"transactionNum": strconv.Itoa(transactionNum),
-		"price": rep.quote.String(),
-		"stockSymbol": rep.stock,
-		"username": rep.user,
+	params := map[string]string{
+		"server":          server,
+		"transactionNum":  strconv.Itoa(transactionNum),
+		"price":           rep.quote.String(),
+		"stockSymbol":     rep.stock,
+		"username":        rep.user,
 		"quoteServerTime": strconv.FormatUint(rep.time, 10),
-		"cryptoKey": rep.key,
+		"cryptoKey":       rep.key,
 	}
 	al.SendLog("/quoteServer", params)
 }
 
 func (al AuditLogger) SendLog(slash string, params map[string]string) {
-	req, err := http.NewRequest("GET", al.addr + slash, nil)
+	req, err := http.NewRequest("GET", al.addr+slash, nil)
 	if err != nil {
 		log.Print(err)
 	}
@@ -123,7 +122,7 @@ func (al AuditLogger) SendLog(slash string, params map[string]string) {
 	req.URL.RawQuery = url.Encode()
 	client := &http.Client{}
 	_, err = client.Do(req)
-	if  err != nil {
+	if err != nil {
 		fmt.Printf("Error connecting to the audit server for  %s command:  %s", slash, err.Error())
 	}
 }

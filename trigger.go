@@ -1,39 +1,40 @@
 package transactionserver
 
 import (
-	"github.com/shopspring/decimal"
-	"time"
 	"fmt"
+	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 type Trigger struct {
-	User string
-	Stock string
-	TransNum int
-	QuoteClient QuoteClientI
+	User          string
+	Stock         string
+	TransNum      int
+	QuoteClient   QuoteClientI
 	BuySellAmount decimal.Decimal
 	TriggerAmount decimal.Decimal
-	action func(trig *Trigger)
-	TriggerType string
-	cancel chan bool
+	action        func(trig *Trigger)
+	TriggerType   string
+	cancel        chan bool
 }
 
 func NewBuyTrigger(user string, stock string, quoteClient QuoteClientI, buySellAmount decimal.Decimal,
 	action func(*Trigger)) *Trigger {
-		return &Trigger{
-			User :          user,
-			Stock:         stock,
-			QuoteClient:   quoteClient,
-			BuySellAmount: buySellAmount,
-			action:        action,
-			TriggerType:   "BUY",
-		}
+	return &Trigger{
+		User:          user,
+		Stock:         stock,
+		QuoteClient:   quoteClient,
+		BuySellAmount: buySellAmount,
+		action:        action,
+		TriggerType:   "BUY",
+	}
 }
 
 func NewSellTrigger(user string, stock string, quoteClient QuoteClientI, buySellAmount decimal.Decimal,
 	action func(trigger *Trigger)) *Trigger {
 	return &Trigger{
-		User :          user,
+		User:          user,
 		Stock:         stock,
 		QuoteClient:   quoteClient,
 		BuySellAmount: buySellAmount,
@@ -50,9 +51,9 @@ func (trig Trigger) Start(trigger decimal.Decimal, transNum int) {
 		for {
 			trig.testTrigger()
 			select {
-				case <-time.After(time.Millisecond * 200):
-				case <-trig.cancel:
-					return
+			case <-time.After(time.Millisecond * 200):
+			case <-trig.cancel:
+				return
 			}
 		}
 	}()
@@ -65,7 +66,7 @@ func (trig Trigger) Cancel() {
 }
 
 func (trig Trigger) testTrigger() {
-	quote, err := trig.QuoteClient.Query(trig.User , trig.Stock, trig.TransNum)
+	quote, err := trig.QuoteClient.Query(trig.User, trig.Stock, trig.TransNum)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -77,9 +78,8 @@ func (trig Trigger) testTrigger() {
 		return
 	}
 
-	if trig.TriggerType == "SELL" &&  quote.GreaterThanOrEqual(trig.TriggerAmount) {
+	if trig.TriggerType == "SELL" && quote.GreaterThanOrEqual(trig.TriggerAmount) {
 		trig.action(&trig)
 		trig.cancel <- true
 	}
 }
-
