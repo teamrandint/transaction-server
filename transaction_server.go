@@ -7,12 +7,13 @@ import (
 )
 
 type TransactionServer struct {
-	Name         string
-	Addr         string
-	Server       Server
-	Logger       Logger
-	UserDatabase UserDatabase
-	QuoteClient  QuoteClientI
+	Name            string
+	Addr            string
+	Server          Server
+	Logger          Logger
+	UserDatabase    UserDatabase
+	QuoteClient     QuoteClientI
+	RunningTriggers []*Trigger
 }
 
 func NewTransactionServer(serverAddr string, databaseAddr string, auditAddr string) *TransactionServer {
@@ -26,15 +27,18 @@ func NewTransactionServer(serverAddr string, databaseAddr string, auditAddr stri
 		addr: auditAddr,
 	}
 
+	running_triggers := []*Trigger{}
+
 	quoteClient := NewQuoteClient(logger)
 
 	ts := &TransactionServer{
-		Name:         "transactionserve",
-		Addr:         serverAddr,
-		Server:       server,
-		Logger:       logger,
-		UserDatabase: database,
-		QuoteClient:  quoteClient,
+		Name:            "transactionserve",
+		Addr:            serverAddr,
+		Server:          server,
+		Logger:          logger,
+		UserDatabase:    database,
+		QuoteClient:     quoteClient,
+		RunningTriggers: running_triggers,
 	}
 
 	server.route("ADD,<user>,<amount>", ts.Add)
@@ -489,31 +493,39 @@ func (ts TransactionServer) CancelSetSell(params ...string) string {
 	return "1"
 }
 
-// Params: user, filename
-// Purpose: Print out the history of the users transactions to the user specified file
-// Post-Condition: The history of the user's transaction are written to the specified file.
-func (ts TransactionServer) DumpLogUser(params ...string) string {
-	user := params[0]
-	filename := params[1]
+// DumpLogUser Print out the history of the users transactions
+// to the user specified file
+func (ts TransactionServer) DumpLogUser(user string, filename string) string {
 	ts.Logger.DumpLog(filename, user)
 	return "1"
 }
 
-// Params: filename
-// Purpose: Print out to the specified file the complete set of transactions that have occurred in the system.
-// Pre-Condition: Can only be executed from the supervisor (root/administrator) account.
-// Post-Condition: Places a complete log file of all transactions that have occurred in the system into the file specified by filename
+// DumpLog prints out to the specified file the complete set of transactions
+// that have occurred in the system.
+// Can only be executed from the supervisor (root/administrator) account.
 func (ts TransactionServer) DumpLog(params ...string) string {
 	filename := params[0]
 	ts.Logger.DumpLog(filename, nil)
 	return "1"
 }
 
-// Params: user
-// Purpose: Provides a summary to the client of the given user's transaction history and the current status of their accounts as well as any set buy or sell triggers and their parameters
-// Post-Condition: A summary of the given user's transaction history and the current status of their accounts as well as any set buy or sell triggers and their parameters is displayed to the user.
-func (ts TransactionServer) DisplaySummary(params ...string) string {
+// DisplaySummary provides a summary to the client of the given user's
+// transaction history and the current status of their accounts as well
+// as any set buy or sell triggers and their parameters.
+func (ts TransactionServer) DisplaySummary(user string) string {
 	panic("not implemented")
+}
+
+// getRunningTrigger returns a point to the running trigger that corresponds
+// to the given user, stock combo.
+// If there is not a matching running trigger, returns nil
+func (ts TransactionServer) getRunningTrigger(user string, stock string) *Trigger {
+	for _, trig := range ts.RunningTriggers {
+		if trig.User == user && trig.Stock == stock {
+			return trig
+		}
+	}
+	return nil
 }
 
 func (ts TransactionServer) sellExecute(trigger *Trigger) {
