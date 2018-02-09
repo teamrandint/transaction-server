@@ -22,3 +22,9 @@ func TestAddFunds(t *testing.T) {
 		t.Error(err, err2)
 	}
 }
+
+func TestGetUserInfo(t *testing.T) {
+	db := RedisDatabase{"tcp", ":6379"}
+	r, _ := db.GetUserInfo("AAA")
+	t.Log(r)
+}

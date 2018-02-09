@@ -42,28 +42,42 @@ type RedisDatabase struct {
 }
 
 func (u RedisDatabase) getConn() redis.Conn {
-	conn, err := redis.Dial(u.Addr, u.Port)
+	c, err := redis.Dial(u.Addr, u.Port)
 	if err != nil {
 		panic(err)
 	}
-	return conn
+	return c
 }
 
 // GetUserInfo returns all of a users information in the database
 func (u RedisDatabase) GetUserInfo(user string) (info string, err error) {
-	conn := u.getConn()
-	reply, err := conn.Do("GET", user)
+	c := u.getConn()
+	c.Send("MULTI")
+	c.Send("GET", user+":Balance")
+	c.Send("GET", user+":Stocks")
+	c.Send("GET", user+":SellOrders")
+	c.Send("GET", user+":BuyOrders")
+	c.Send("GET", user+":SellTriggers")
+	c.Send("GET", user+":BuyTriggers")
+	c.Send("GET", user+":BalanceReserve")
+	c.Send("GET", user+":StocksReserve")
+	c.Send("GET", user+":History")
+	r, err := c.Do("EXEC")
 	if err != nil {
 		return "", err
 	}
 
-	conn.Close()
-	return fmt.Sprintf("%v", reply), err
+	c.Close()
+	return fmt.Sprintf("%v", r), err
 }
 
 // AddSellTrigger adds a sell trigger to the redisDB
 func (u RedisDatabase) AddSellTrigger(user string, stock string, t *triggers.Trigger) error {
-	panic("implement me")
+	panic("Not implemented")
+	c := u.getConn()
+	_, err := c.Do("APPPEND", user+":SellTriggers")
+	c.Close()
+	return err
 }
 
 // GetSellTrigger gets any available triggers that a user has already set
@@ -126,7 +140,7 @@ func (u RedisDatabase) PopBuy(user string) (stock string, cost decimal.Decimal, 
 // AddFunds adds amount dollars to the user account
 func (u RedisDatabase) AddFunds(user string, amount decimal.Decimal) error {
 	conn := u.getConn()
-	_, err := conn.Do("INCRBYFLOAT", user, amount)
+	_, err := conn.Do("INCRBYFLOAT", user+":balance", amount)
 	if err != nil {
 		panic(err)
 	}
