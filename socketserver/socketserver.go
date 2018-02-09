@@ -99,6 +99,7 @@ func (s SocketServer) handleRequest(conn net.Conn) {
 		return
 	}
 	s.transNum++
+	fmt.Println(string(buf[:]))
 	res := function(params...)
 	// Send a response back to person contacting us.
 	conn.Write([]byte(res))
