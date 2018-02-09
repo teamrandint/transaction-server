@@ -99,3 +99,16 @@ func TestStocks(t *testing.T) {
 
 	db.DeleteKey("F:Stocks")
 }
+
+func TestOrders(t *testing.T) {
+	db := RedisDatabase{"tcp", ":6379"}
+	err := db.PushSell("SELLER", "AAA", decimal.NewFromFloat(11.11), 3)
+	if err != nil {
+		t.Error(err)
+	}
+	err = db.PushSell("SELLER", "BBB", decimal.NewFromFloat(11.11), 3)
+	if err != nil {
+		t.Error(err)
+	}
+
+}
