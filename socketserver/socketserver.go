@@ -62,7 +62,7 @@ func (s SocketServer) Run() {
 		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println("Error accepting: ", err.Error())
-			os.Exit(1)
+			continue
 		}
 		go s.handleRequest(conn)
 	}

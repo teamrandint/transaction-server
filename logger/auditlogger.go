@@ -135,4 +135,5 @@ func (al AuditLogger) SendLog(slash string, params map[string]string) {
 	if err != nil {
 		fmt.Printf("Error connecting to the audit server for  %s command:  %s", slash, err.Error())
 	}
+	defer req.Body.Close()
 }
