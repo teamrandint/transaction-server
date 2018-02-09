@@ -3,7 +3,6 @@ package database
 import (
 	"errors"
 	"fmt"
-	"seng468/transaction-server/trigger"
 	"strconv"
 	"strings"
 
@@ -36,14 +35,6 @@ type UserDatabase interface {
 	PopBuy(user string) (stock string, cost decimal.Decimal, shares int, err error)
 	PushSell(user string, stock string, cost decimal.Decimal, shares int) error
 	PopSell(user string) (stock string, cost decimal.Decimal, shares int, err error)
-
-	AddBuyTrigger(user string, stock string, t *triggers.Trigger) error
-	GetBuyTrigger(user string, stock string) (*triggers.Trigger, error)
-	RemoveBuyTrigger(user string, stock string) (*triggers.Trigger, error)
-
-	AddSellTrigger(user string, stock string, t *triggers.Trigger) error
-	GetSellTrigger(user string, stock string) (*triggers.Trigger, error)
-	RemoveSellTrigger(user string, stock string) (*triggers.Trigger, error)
 }
 
 // RedisDatabase holds the address of the redisDB
@@ -80,37 +71,6 @@ func (u RedisDatabase) GetUserInfo(user string) (info string, err error) {
 
 	c.Close()
 	return fmt.Sprintf("%v", r), err
-}
-
-// AddSellTrigger adds a sell trigger to the redisDB
-func (u RedisDatabase) AddSellTrigger(user string, stock string, t *triggers.Trigger) error {
-	panic("Not implemented")
-}
-
-// GetSellTrigger gets any available triggers that a user has already set
-func (u RedisDatabase) GetSellTrigger(user string, stock string) (*triggers.Trigger, error) {
-	panic("implement me")
-}
-
-// RemoveSellTrigger removes any sell trigger corresponding to a stock.
-// This may be unset, or set
-func (u RedisDatabase) RemoveSellTrigger(user string, stock string) (*triggers.Trigger, error) {
-	panic("implement me")
-}
-
-// AddBuyTrigger adds a trigger for a user, for a specified stock
-func (u RedisDatabase) AddBuyTrigger(user string, stock string, t *triggers.Trigger) error {
-	panic("implement me")
-}
-
-// RemoveBuyTrigger removes a users buy trigger for the corresponding stock
-func (u RedisDatabase) RemoveBuyTrigger(user string, stock string) (*triggers.Trigger, error) {
-	panic("implement me")
-}
-
-// GetBuyTrigger gets a user's trigger for the specified stock, if one exists
-func (u RedisDatabase) GetBuyTrigger(user string, stock string) (*triggers.Trigger, error) {
-	panic("implement me")
 }
 
 // PushSell adds a record of the users requested sell to their account

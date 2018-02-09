@@ -62,7 +62,7 @@ func (s SocketServer) Run() {
 		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println("Error accepting: ", err.Error())
-			os.Exit(1)
+			continue
 		}
 		go s.handleRequest(conn)
 	}
@@ -99,6 +99,7 @@ func (s SocketServer) handleRequest(conn net.Conn) {
 		return
 	}
 	s.transNum++
+	fmt.Println(string(buf[:]))
 	res := function(params...)
 	// Send a response back to person contacting us.
 	conn.Write([]byte(res))

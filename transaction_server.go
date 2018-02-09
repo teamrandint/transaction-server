@@ -57,6 +57,7 @@ func main() {
 	server.Route("CANCEL_SET_BUY,<user>,<stock>", ts.CancelSetBuy)
 	server.Route("SET_BUY_TRIGGER,<user>,<stock>,<amount>", ts.SetBuyTrigger)
 	server.Route("SET_SELL_AMOUNT,<user>,<stock>,<amount>", ts.SetSellAmount)
+	server.Route("SET_SELL_TRIGGER,<user>,<stock>,<amount>", ts.SetSellTrigger)
 	server.Route("CANCEL_SET_SELL,<user>,<stock>", ts.CancelSetSell)
 	server.Route("DUMPLOG,<user>,<filename>", ts.DumpLogUser)
 	server.Route("DUMPLOG,<filename>", ts.DumpLog)
@@ -79,6 +80,7 @@ func (ts TransactionServer) Add(params ...string) string {
 	if err != nil {
 		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "ADD", user, nil, nil, amount,
 			"Failed to add amount to the database for user")
+		return "-1"
 	}
 	ts.Logger.AccountTransaction(ts.Name, ts.Server.TransactionNum(), "ADD", user, amount)
 	return "1"
@@ -321,11 +323,17 @@ func (ts TransactionServer) SetBuyAmount(params ...string) string {
 		return "-1"
 	}
 
-	// TODO move funds to reserve account
 	err = ts.UserDatabase.RemoveFunds(user, amount)
 	if err != nil {
 		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil, amount,
 			fmt.Sprintf("Error removing funds from database:  %s", err.Error()))
+		return "-1"
+	}
+
+	err = ts.UserDatabase.AddReserveFunds(user, amount)
+	if err != nil {
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil, amount,
+			fmt.Sprintf("Error adding funds to reserve:  %s", err.Error()))
 		return "-1"
 	}
 
@@ -345,8 +353,6 @@ func (ts TransactionServer) CancelSetBuy(params ...string) string {
 	user := params[0]
 	stock := params[1]
 
-	//TODO add funds back from reserve account
-
 	trigger := ts.getBuyTrigger(user, stock)
 	if trigger == nil {
 		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_BUY", user, stock, nil, nil,
@@ -354,6 +360,12 @@ func (ts TransactionServer) CancelSetBuy(params ...string) string {
 		return "-1"
 	}
 	trigger.Cancel()
+	err := ts.UserDatabase.RemoveReserveFunds(user, trigger.BuySellAmount)
+	if err != nil {
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil,
+			trigger.BuySellAmount, fmt.Sprintf("Error removing funds from reserve:  %s", err.Error()))
+		return "-1"
+	}
 	delete(ts.BuyTriggers, user+","+stock)
 	return "1"
 }
@@ -456,12 +468,18 @@ func (ts TransactionServer) SetSellTrigger(params ...string) string {
 	}
 
 	_, shares, err := ts.getMaxPurchase(user, stock, trig.BuySellAmount, amount)
-	// TODO add shares to reserve account
 
 	err = ts.UserDatabase.RemoveStock(user, stock, shares)
 	if err != nil {
 		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_TRIGGER", user, stock, nil, amount,
 			fmt.Sprintf("Could not remove stock from database: %s", err.Error()))
+		return "-1"
+	}
+
+	err = ts.UserDatabase.AddReserveStock(user, stock, shares)
+	if err != nil {
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_TRIGGER", user, stock, nil, amount,
+			fmt.Sprintf("Could not add stock to reserve: %s", err.Error()))
 		return "-1"
 	}
 
@@ -486,11 +504,23 @@ func (ts TransactionServer) CancelSetSell(params ...string) string {
 		return "-1"
 	}
 
-	// TODO add from reserve account
-	_, reserved, _ := ts.getMaxPurchase(user, stock, trigger.BuySellAmount, trigger.TriggerAmount)
-	err := ts.UserDatabase.AddStock(user, stock, reserved)
+	reserved, err := ts.UserDatabase.GetReserveStock(user, stock)
 	if err != nil {
-		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_SELL", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_TRIGGER", user, stock, nil, nil,
+			fmt.Sprintf("Error getting reserved stock from database:  %s", err.Error()))
+		return "-1"
+	}
+
+	err = ts.UserDatabase.RemoveReserveStock(user, stock, reserved)
+	if err != nil {
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_TRIGGER", user, stock, nil, nil,
+			fmt.Sprintf("Error removing reserved stock from database:  %s", err.Error()))
+		return "-1"
+	}
+
+	err = ts.UserDatabase.AddStock(user, stock, reserved)
+	if err != nil {
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_TRIGGER", user, stock, nil, nil,
 			fmt.Sprintf("Error adding stock to database:  %s", err.Error()))
 		return "-1"
 	}
@@ -522,7 +552,7 @@ func (ts TransactionServer) DumpLog(params ...string) string {
 // transaction history and the current status of their accounts as well
 // as any set buy or sell triggers and their parameters.
 func (ts TransactionServer) DisplaySummary(params ...string) string {
-	panic("not implemented")
+	return "TODO"
 }
 
 // getBuyTrigger returns a pointer to the running buy trigger that corresponds
@@ -552,8 +582,7 @@ func (ts TransactionServer) sellExecute(trigger *triggers.Trigger) {
 		return
 	}
 
-	_, reserved, _ := ts.getMaxPurchase(trigger.User, trigger.Stock, trigger.BuySellAmount, trigger.TriggerAmount)
-	//TODO get these amounts from reserve account
+	reserved, _ := ts.UserDatabase.GetReserveStock(trigger.User, trigger.Stock)
 	ts.UserDatabase.AddFunds(trigger.User, cost)
 	ts.UserDatabase.AddStock(trigger.User, trigger.Stock, reserved-shares)
 	delete(ts.SellTriggers, trigger.User+","+trigger.Stock)
@@ -566,8 +595,8 @@ func (ts TransactionServer) buyExecute(trigger *triggers.Trigger) {
 		return
 	}
 	ts.UserDatabase.AddFunds(trigger.User, trigger.BuySellAmount.Sub(cost))
+	ts.UserDatabase.RemoveFunds(trigger.User, trigger.BuySellAmount)
 	ts.UserDatabase.AddStock(trigger.User, trigger.Stock, shares)
-	//TODO get these amounts from reserve account
 	delete(ts.BuyTriggers, trigger.User+","+trigger.Stock)
 }
 
