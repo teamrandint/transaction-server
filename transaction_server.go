@@ -533,8 +533,8 @@ func (ts TransactionServer) CancelSetSell(params ...string) string {
 // DumpLogUser Print out the history of the users transactions
 // to the user specified file
 func (ts TransactionServer) DumpLogUser(params ...string) string {
-	filename := params[0]
-	user := params[1]
+	user := params[0]
+	filename := params[1]
 	go ts.Logger.DumpLog(filename, user)
 	return "1"
 }

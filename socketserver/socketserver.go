@@ -36,7 +36,7 @@ func getParamsFromRegex(regex string, msg string) []string {
 	for _, m := range match {
 		params = append(params, m)
 	}
-	return params
+	return params[1:]
 }
 
 func (s SocketServer) buildRoutePattern(pattern string) string {
