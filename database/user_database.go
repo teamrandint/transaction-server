@@ -134,80 +134,68 @@ func (u RedisDatabase) PopBuy(user string) (stock string, cost decimal.Decimal, 
 
 // AddFunds adds amount dollars to the user account
 func (u RedisDatabase) AddFunds(user string, amount decimal.Decimal) error {
-	conn := u.getConn()
-	_, err := conn.Do("INCRBYFLOAT", user+":Balance", amount)
-	if err != nil {
-		panic(err)
-	}
-	conn.Close()
-	return nil
+	_, err := u.fundAction("Add", user, ":Balance", amount)
+	return err
 }
 
 // GetFunds returns the amount of available funds in a users account
 func (u RedisDatabase) GetFunds(user string) (decimal.Decimal, error) {
-	conn := u.getConn()
-	r, err := redis.String(conn.Do("GET", user+":Balance"))
-	if err != nil {
-		panic(err)
-	}
-	conn.Close()
-	receivedValue, err := decimal.NewFromString(r)
-	return receivedValue, err
+	amount := decimal.NewFromFloat(0.0)
+	return u.fundAction("Get", user, ":Balance", amount)
 }
 
 // RemoveFunds remove n funds from the user's account
 // amount is the absolute value of the funds being removed
 func (u RedisDatabase) RemoveFunds(user string, amount decimal.Decimal) error {
-	conn := u.getConn()
-	_, err := conn.Do("INCRBYFLOAT", user+":Balance", amount.Neg())
-	if err != nil {
-		return err
-	}
-	conn.Close()
-	return nil
-}
-
-// DeleteKey deletes a key in the database
-// use this function with caution...
-func (u RedisDatabase) DeleteKey(key string) {
-	conn := u.getConn()
-	conn.Do("DEL", key)
-	conn.Close()
+	_, err := u.fundAction("Remove", user, ":Balance", amount)
+	return err
 }
 
 // AddReserveFunds adds funds to a user's reserve account
 func (u RedisDatabase) AddReserveFunds(user string, amount decimal.Decimal) error {
-	conn := u.getConn()
-	_, err := conn.Do("INCRBYFLOAT", user+":BalanceReserve", amount)
-	conn.Close()
-
-	if err != nil {
-		return err
-	}
-	return nil
-
+	_, err := u.fundAction("Add", user, ":BalanceReserve", amount)
+	return err
 }
 
 // GetReserveFunds returns the amount of funds present in a users reserve account
 func (u RedisDatabase) GetReserveFunds(user string) (decimal.Decimal, error) {
-	conn := u.getConn()
-	r, err := redis.String(conn.Do("GET", user+":BalanceReserve"))
-	conn.Close()
-
-	receivedValue, _ := decimal.NewFromString(r)
-	return receivedValue, err
+	amount := decimal.NewFromFloat(0.0)
+	return u.fundAction("Get", user, ":BalanceReserve", amount)
 }
 
 // RemoveReserveFunds removes n funds from a users account
 // Pass in the absoloute value of funds to be removed.
 func (u RedisDatabase) RemoveReserveFunds(user string, amount decimal.Decimal) error {
+	_, err := u.fundAction("Add", user, ":BalanceReserve", amount)
+	return err
+}
+
+// stockAction handles the generic stock commands
+func (u RedisDatabase) fundAction(action string, user string,
+	accountSuffix string, amount decimal.Decimal) (decimal.Decimal, error) {
+	command := ""
+	if action == "Add" {
+		command = "INCRBYFLOAT"
+	} else if action == "Get" {
+		command = "GET"
+	} else if action == "Remove" {
+		command = "INCRBYFLOAT"
+		amount = amount.Neg()
+	} else {
+		return decimal.NewFromFloat(0.0), errors.New("Bad action attempt on funds")
+	}
+
 	conn := u.getConn()
-	_, err := conn.Do("INCRBYFLOAT", user+":BalanceReserve", amount.Neg())
-	if err != nil {
-		panic(err)
+	var r float64
+	var err error
+	if action != "Get" {
+		r, err = redis.Float64(conn.Do(command, user+accountSuffix, amount))
+	} else {
+		r, err = redis.Float64(conn.Do(command, user+accountSuffix))
+
 	}
 	conn.Close()
-	return nil
+	return decimal.NewFromFloat(r), err
 }
 
 // GetStock returns the users available balance of said stock
@@ -263,7 +251,7 @@ func (u RedisDatabase) stockAction(action string, user string,
 	conn := u.getConn()
 	var r int
 	var err error
-	if amount != 0 {
+	if action != "Get" {
 		r, err = redis.Int(conn.Do(command, user+accountSuffix, stock, amount))
 	} else {
 		r, err = redis.Int(conn.Do(command, user+accountSuffix, stock))
@@ -271,4 +259,12 @@ func (u RedisDatabase) stockAction(action string, user string,
 	}
 	conn.Close()
 	return r, err
+}
+
+// DeleteKey deletes a key in the database
+// use this function with caution...
+func (u RedisDatabase) DeleteKey(key string) {
+	conn := u.getConn()
+	conn.Do("DEL", key)
+	conn.Close()
 }
