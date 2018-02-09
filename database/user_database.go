@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"seng468/transaction-server/trigger"
 
+	"github.com/garyburd/redigo/redis"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -36,11 +38,27 @@ type UserDatabase interface {
 // RedisDatabase holds the address of the redisDB
 type RedisDatabase struct {
 	Addr string
+	Port string
+}
+
+func (u RedisDatabase) getConn() redis.Conn {
+	conn, err := redis.Dial(u.Addr, u.Port)
+	if err != nil {
+		panic(err)
+	}
+	return conn
 }
 
 // GetUserInfo returns all of a users information in the database
 func (u RedisDatabase) GetUserInfo(user string) (info string, err error) {
-	panic("implement me")
+	conn := u.getConn()
+	reply, err := conn.Do("GET", user)
+	if err != nil {
+		return "", err
+	}
+
+	conn.Close()
+	return fmt.Sprintf("%v", reply), err
 }
 
 // AddSellTrigger adds a sell trigger to the redisDB
@@ -107,8 +125,12 @@ func (u RedisDatabase) PopBuy(user string) (stock string, cost decimal.Decimal, 
 
 // AddFunds adds amount dollars to the user account
 func (u RedisDatabase) AddFunds(user string, amount decimal.Decimal) error {
-	fmt.Print(user)
-	fmt.Print(amount)
+	conn := u.getConn()
+	_, err := conn.Do("INCRBYFLOAT", user, amount)
+	if err != nil {
+		panic(err)
+	}
+	conn.Close()
 	return nil
 }
 
