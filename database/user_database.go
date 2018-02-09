@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"seng468/transaction-server/trigger"
+	"strconv"
+	"strings"
 
 	"github.com/garyburd/redigo/redis"
 
@@ -113,23 +115,77 @@ func (u RedisDatabase) GetBuyTrigger(user string, stock string) (*triggers.Trigg
 
 // PushSell adds a record of the users requested sell to their account
 func (u RedisDatabase) PushSell(user string, stock string, cost decimal.Decimal, shares int) error {
-	panic("implement me")
+	return u.pushOrder("Sell", user, stock, cost, shares)
 }
 
 // PopSell removes a users most recent requested sell
 func (u RedisDatabase) PopSell(user string) (stock string, cost decimal.Decimal, shares int, err error) {
-	panic("implement me")
+	return u.popOrder("Sell", user)
 }
 
 // PushBuy adds a record of the users requested buy to their account
 func (u RedisDatabase) PushBuy(user string, stock string, cost decimal.Decimal, shares int) error {
 	// Expires in 60s
-	panic("implement me")
+	return u.pushOrder("Buy", user, stock, cost, shares)
 }
 
 // PopBuy removes a users most recent requested buy
 func (u RedisDatabase) PopBuy(user string) (stock string, cost decimal.Decimal, shares int, err error) {
-	panic("implement me")
+	return u.popOrder("Buy", user)
+}
+
+func (u RedisDatabase) pushOrder(transType string, user string,
+	stock string, cost decimal.Decimal, shares int) error {
+	accountSuffix := ""
+	if transType == "Buy" {
+		accountSuffix = ":BuyOrders"
+	} else if transType == "Sell" {
+		accountSuffix = ":SellOrders"
+	} else {
+		return errors.New("Bad transaction type of " + transType)
+	}
+
+	encoded := u.encodeOrder(stock, cost, shares)
+
+	conn := u.getConn()
+	_, err := redis.Int64(conn.Do("RPUSH", user+accountSuffix, encoded))
+	conn.Close()
+	return err
+}
+
+func (u RedisDatabase) popOrder(transType string, user string) (stock string, cost decimal.Decimal, shares int, err error) {
+	accountSuffix := ""
+	if transType == "Buy" {
+		accountSuffix = ":BuyOrders"
+	} else if transType == "Sell" {
+		accountSuffix = ":SellOrders"
+	} else {
+		return stock, cost, shares, errors.New("Bad transaction type of " + transType)
+	}
+
+	conn := u.getConn()
+	recv, err := redis.String(conn.Do("RPOP", user+accountSuffix))
+	conn.Close()
+
+	stock, cost, shares = u.decodeOrder(recv)
+	return stock, cost, shares, err
+}
+
+// Encodes a buy or sell order into a string, to be pushed onto the pending orders stack
+// Returns a string following the format of:
+//		"stock:cost:shares"
+func (u RedisDatabase) encodeOrder(stock string, cost decimal.Decimal, shares int) string {
+	return stock + ":" + cost.String() + ":" + strconv.Itoa(shares)
+}
+
+// Performs the opposite of encodeOrder
+func (u RedisDatabase) decodeOrder(order string) (stock string, cost decimal.Decimal, shares int) {
+	split := strings.Split(order, ":")
+	stock = split[0]
+	cost, _ = decimal.NewFromString(split[1])
+	shares, _ = strconv.Atoi(split[2])
+
+	return stock, cost, shares
 }
 
 // AddFunds adds amount dollars to the user account
