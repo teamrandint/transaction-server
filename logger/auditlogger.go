@@ -1,4 +1,4 @@
-package transactionserver
+package logger
 
 import (
 	"fmt"
@@ -10,17 +10,26 @@ import (
 )
 
 type Logger interface {
-	QuoteServer(server string, transNum int, reply *QuoteReply)
-	AccountTransaction(server string, transNum int, action string, user interface{}, funds interface{})
-	SystemError(server string, transNum int, command string, user interface{}, stock interface{}, filename interface{},
+	QuoteServer(server string, transNum int,
+		price string, stock string, user string, qsTime uint64, key string)
+
+	AccountTransaction(server string, transNum int,
+		action string, user interface{}, funds interface{})
+
+	SystemError(server string, transNum int,
+		command string, user interface{}, stock interface{},
+		filename interface{},
 		funds interface{}, errorMsg interface{})
-	SystemEvent(server string, transNum int, command string, username interface{}, stock interface{},
+
+	SystemEvent(server string, transNum int,
+		command string, username interface{}, stock interface{},
 		filename interface{}, funds interface{})
+
 	DumpLog(filename string, username interface{})
 }
 
 type AuditLogger struct {
-	addr string
+	Addr string
 }
 
 func (al AuditLogger) DumpLog(filename string, username interface{}) {
@@ -95,21 +104,22 @@ func (al AuditLogger) AccountTransaction(server string, transactionNum int, acti
 	al.SendLog("/accountTransaction", params)
 }
 
-func (al AuditLogger) QuoteServer(server string, transactionNum int, rep *QuoteReply) {
+func (al AuditLogger) QuoteServer(server string, transactionNum int,
+	price string, stock string, user string, qsTime uint64, key string) {
 	params := map[string]string{
 		"server":          server,
 		"transactionNum":  strconv.Itoa(transactionNum),
-		"price":           rep.quote.String(),
-		"stockSymbol":     rep.stock,
-		"username":        rep.user,
-		"quoteServerTime": strconv.FormatUint(rep.time, 10),
-		"cryptoKey":       rep.key,
+		"price":           price,
+		"stockSymbol":     stock,
+		"username":        user,
+		"quoteServerTime": strconv.FormatUint(qsTime, 10),
+		"cryptoKey":       key,
 	}
 	al.SendLog("/quoteServer", params)
 }
 
 func (al AuditLogger) SendLog(slash string, params map[string]string) {
-	req, err := http.NewRequest("GET", al.addr+slash, nil)
+	req, err := http.NewRequest("GET", al.Addr+slash, nil)
 	if err != nil {
 		log.Print(err)
 	}

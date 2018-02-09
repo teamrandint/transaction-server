@@ -1,11 +1,6 @@
 package tests
 
-import (
-	"seng468/transaction-server"
-)
-
 type MockLogger struct {
-
 }
 
 func (MockLogger) QuoteServer(server string, transNum int, reply *transactionserver.QuoteReply) {
@@ -29,5 +24,3 @@ func (MockLogger) SystemEvent(server string, transNum int, command string, usern
 func (MockLogger) DumpLog(filename string, username interface{}) {
 
 }
-
-

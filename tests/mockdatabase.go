@@ -2,7 +2,6 @@ package tests
 
 import (
 	"github.com/shopspring/decimal"
-	"seng468/transaction-server"
 )
 
 type MockDatabase struct {
@@ -50,7 +49,7 @@ func (db MockDatabase) RemoveSellTrigger(user string, stock string) (*transactio
 }
 
 func NewMockDatabase() MockDatabase {
-	return MockDatabase {
+	return MockDatabase{
 		userFunds: make(map[string]decimal.Decimal),
 	}
 }
@@ -60,7 +59,7 @@ func (db MockDatabase) AddFunds(user string, amount decimal.Decimal) error {
 		db.userFunds[user] = val.Add(amount)
 		return nil
 	}
-	db.userFunds[user] =  amount
+	db.userFunds[user] = amount
 	return nil
 }
 

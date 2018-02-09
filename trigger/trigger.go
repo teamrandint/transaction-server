@@ -1,7 +1,8 @@
-package transactionserver
+package triggers
 
 import (
 	"fmt"
+	"seng468/transaction-server/quote"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -11,7 +12,7 @@ type Trigger struct {
 	User          string
 	Stock         string
 	TransNum      int
-	QuoteClient   QuoteClientI
+	QuoteClient   quoteclient.QuoteClientI
 	BuySellAmount decimal.Decimal
 	TriggerAmount decimal.Decimal
 	action        func(trig *Trigger)
@@ -19,8 +20,8 @@ type Trigger struct {
 	cancel        chan bool
 }
 
-func NewBuyTrigger(user string, stock string, quoteClient QuoteClientI, buySellAmount decimal.Decimal,
-	action func(*Trigger)) *Trigger {
+func NewBuyTrigger(user string, stock string, quoteClient quoteclient.QuoteClientI,
+	buySellAmount decimal.Decimal, action func(*Trigger)) *Trigger {
 	return &Trigger{
 		User:          user,
 		Stock:         stock,
@@ -31,8 +32,8 @@ func NewBuyTrigger(user string, stock string, quoteClient QuoteClientI, buySellA
 	}
 }
 
-func NewSellTrigger(user string, stock string, quoteClient QuoteClientI, buySellAmount decimal.Decimal,
-	action func(trigger *Trigger)) *Trigger {
+func NewSellTrigger(user string, stock string, quoteClient quoteclient.QuoteClientI,
+	buySellAmount decimal.Decimal, action func(trigger *Trigger)) *Trigger {
 	return &Trigger{
 		User:          user,
 		Stock:         stock,

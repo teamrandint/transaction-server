@@ -1,14 +1,15 @@
 package tests
 
 import (
+	"seng468/transaction-server/trigger"
 	"testing"
-	"seng468/transaction-server"
-	"github.com/shopspring/decimal"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
-func Callback(t *testing.T, expected *transactionserver.Trigger, called *bool) func(trigger *transactionserver.Trigger) {
-	return func(trigger *transactionserver.Trigger) {
+func Callback(t *testing.T, expected *triggers.Trigger, called *bool) func(trigger *transactionserver.Trigger) {
+	return func(trigger *triggers.Trigger) {
 		if expected.User != trigger.User {
 			t.Error("User name does not match")
 		}
@@ -21,7 +22,7 @@ func Callback(t *testing.T, expected *transactionserver.Trigger, called *bool) f
 		if expected.QuoteClient != trigger.QuoteClient {
 			t.Error("Quote client does not match")
 		}
-		if expected.BuySellAmount!= trigger.BuySellAmount {
+		if expected.BuySellAmount != trigger.BuySellAmount {
 			t.Error("Buy amount does not match")
 		}
 		if expected.TriggerAmount != trigger.TriggerAmount {

@@ -1,4 +1,4 @@
-package transactionserver
+package socketserver
 
 import (
 	"fmt"
@@ -41,15 +41,15 @@ func getParamsFromRegex(regex string, msg string) []string {
 
 func (s SocketServer) buildRoutePattern(pattern string) string {
 	re := regexp.MustCompile(`(<\w+>)`)
-	return re.ReplaceAllString(pattern, `(?P\1.+)`)
+	return re.ReplaceAllString(pattern, `(.+)`) // `(?P\1.+)`
 }
 
-func (s SocketServer) route(pattern string, f func(args ...string) string) {
+func (s SocketServer) Route(pattern string, f func(args ...string) string) {
 	regex := s.buildRoutePattern(pattern)
 	s.routeMap[regex] = f
 }
 
-func (s SocketServer) run() {
+func (s SocketServer) Run() {
 	// Listen for incoming connections.
 	l, err := net.Listen("tcp", s.addr)
 	if err != nil {
@@ -70,7 +70,11 @@ func (s SocketServer) run() {
 
 func (s SocketServer) getRoute(command string) (func(args ...string) string, []string) {
 	for regex, function := range s.routeMap {
-		re, _ := regexp.Compile(regex)
+		re, err := regexp.Compile(regex)
+		if err != nil {
+			fmt.Printf(regex)
+			panic(err)
+		}
 		if re.MatchString(command) {
 			return function, getParamsFromRegex(regex, command)
 		}
