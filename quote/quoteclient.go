@@ -50,7 +50,7 @@ func (q *QuoteClient) Query(u string, s string, transNum int) (decimal.Decimal, 
 		d, _ := decimal.NewFromString(quote.(string))
 		return d, nil
 	}
-	conn, err := net.DialTimeout("tcp", q.addr, time.Second * 3)
+	conn, err := net.Dial("tcp", q.addr)
 	if err != nil {
 		return decimal.Decimal{}, err
 	}
