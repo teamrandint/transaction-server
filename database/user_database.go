@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"seng468/transaction-server/trigger"
 
@@ -20,6 +21,14 @@ type UserDatabase interface {
 	AddStock(user string, stock string, shares int) error
 	GetStock(user string, stock string) (int, error)
 	RemoveStock(user string, stock string, amount int) error
+
+	AddReserveFunds(string, decimal.Decimal) error
+	GetReserveFunds(string) (decimal.Decimal, error)
+	RemoveReserveFunds(string, decimal.Decimal) error
+
+	AddReserveStock(user string, stock string, shares int) error
+	GetReserveStock(user string, stock string) (int, error)
+	RemoveReserveStock(user string, stock string, amount int) error
 
 	PushBuy(user string, stock string, cost decimal.Decimal, shares int) error
 	PopBuy(user string) (stock string, cost decimal.Decimal, shares int, err error)
@@ -74,10 +83,6 @@ func (u RedisDatabase) GetUserInfo(user string) (info string, err error) {
 // AddSellTrigger adds a sell trigger to the redisDB
 func (u RedisDatabase) AddSellTrigger(user string, stock string, t *triggers.Trigger) error {
 	panic("Not implemented")
-	c := u.getConn()
-	_, err := c.Do("APPPEND", user+":SellTriggers")
-	c.Close()
-	return err
 }
 
 // GetSellTrigger gets any available triggers that a user has already set
@@ -104,22 +109,6 @@ func (u RedisDatabase) RemoveBuyTrigger(user string, stock string) (*triggers.Tr
 // GetBuyTrigger gets a user's trigger for the specified stock, if one exists
 func (u RedisDatabase) GetBuyTrigger(user string, stock string) (*triggers.Trigger, error) {
 	panic("implement me")
-}
-
-// GetStock returns the users available balance of said stock
-func (u RedisDatabase) GetStock(user string, stock string) (int, error) {
-	conn := u.getConn()
-	resp, err := redis.Int(conn.Do("HGET", user+":Stocks", stock))
-	conn.Close()
-	return resp, err
-}
-
-// RemoveStock removes int stocks from the users account
-func (u RedisDatabase) RemoveStock(user string, stock string, amount int) error {
-	conn := u.getConn()
-	_, err := conn.Do("HINCRBY", user+":Stocks", stock, -amount)
-	conn.Close()
-	return err
 }
 
 // PushSell adds a record of the users requested sell to their account
@@ -167,22 +156,15 @@ func (u RedisDatabase) GetFunds(user string) (decimal.Decimal, error) {
 }
 
 // RemoveFunds remove n funds from the user's account
+// amount is the absolute value of the funds being removed
 func (u RedisDatabase) RemoveFunds(user string, amount decimal.Decimal) error {
 	conn := u.getConn()
 	_, err := conn.Do("INCRBYFLOAT", user+":Balance", amount.Neg())
 	if err != nil {
-		panic(err)
+		return err
 	}
 	conn.Close()
 	return nil
-}
-
-// AddStock adds shares to the user account
-func (u RedisDatabase) AddStock(user string, stock string, shares int) error {
-	conn := u.getConn()
-	_, err := conn.Do("HSET", user+":Stocks", stock, shares)
-	conn.Close()
-	return err
 }
 
 // DeleteKey deletes a key in the database
@@ -191,4 +173,102 @@ func (u RedisDatabase) DeleteKey(key string) {
 	conn := u.getConn()
 	conn.Do("DEL", key)
 	conn.Close()
+}
+
+// AddReserveFunds adds funds to a user's reserve account
+func (u RedisDatabase) AddReserveFunds(user string, amount decimal.Decimal) error {
+	conn := u.getConn()
+	_, err := conn.Do("INCRBYFLOAT", user+":BalanceReserve", amount)
+	conn.Close()
+
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+
+// GetReserveFunds returns the amount of funds present in a users reserve account
+func (u RedisDatabase) GetReserveFunds(user string) (decimal.Decimal, error) {
+	conn := u.getConn()
+	r, err := redis.String(conn.Do("GET", user+":BalanceReserve"))
+	conn.Close()
+
+	receivedValue, _ := decimal.NewFromString(r)
+	return receivedValue, err
+}
+
+// RemoveReserveFunds removes n funds from a users account
+// Pass in the absoloute value of funds to be removed.
+func (u RedisDatabase) RemoveReserveFunds(user string, amount decimal.Decimal) error {
+	conn := u.getConn()
+	_, err := conn.Do("INCRBYFLOAT", user+":BalanceReserve", amount.Neg())
+	if err != nil {
+		panic(err)
+	}
+	conn.Close()
+	return nil
+}
+
+// GetStock returns the users available balance of said stock
+func (u RedisDatabase) GetStock(user string, stock string) (int, error) {
+	return u.stockAction("Get", user, ":Stocks", stock, 0)
+}
+
+// RemoveStock removes int stocks from the users account
+// Send the absolute value of the stock being removed
+func (u RedisDatabase) RemoveStock(user string, stock string, amount int) error {
+	_, err := u.stockAction("Remove", user, ":Stocks", stock, amount)
+	return err
+}
+
+// AddStock adds shares to the user account
+func (u RedisDatabase) AddStock(user string, stock string, shares int) error {
+	_, err := u.stockAction("Add", user, ":Stocks", stock, shares)
+	return err
+}
+
+// AddReserveStock adds n shares of stock to a user's account
+func (u RedisDatabase) AddReserveStock(user string, stock string, amount int) error {
+	_, err := u.stockAction("Add", user, ":StocksReserve", stock, amount)
+	return err
+}
+
+// GetReserveStock returns the amount of shares present in a user's reserve account
+func (u RedisDatabase) GetReserveStock(user string, stock string) (int, error) {
+	return u.stockAction("Get", user, ":StocksReserve", stock, 0)
+}
+
+// RemoveReserveStock removes n shares of stock from a user's reserve account
+func (u RedisDatabase) RemoveReserveStock(user string, stock string, amount int) error {
+	_, err := u.stockAction("Remove", user, ":StocksReserve", stock, amount)
+	return err
+}
+
+// stockAction handles the generic stock commands
+func (u RedisDatabase) stockAction(action string, user string,
+	accountSuffix string, stock string, amount int) (int, error) {
+	command := ""
+	if action == "Add" {
+		command = "HINCRBY"
+	} else if action == "Get" {
+		command = "HGET"
+	} else if action == "Remove" {
+		command = "HINCRBY"
+		amount = -amount
+	} else {
+		return 0, errors.New("Bad action attempt on stocks")
+	}
+
+	conn := u.getConn()
+	var r int
+	var err error
+	if amount != 0 {
+		r, err = redis.Int(conn.Do(command, user+accountSuffix, stock, amount))
+	} else {
+		r, err = redis.Int(conn.Do(command, user+accountSuffix, stock))
+
+	}
+	conn.Close()
+	return r, err
 }

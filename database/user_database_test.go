@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -26,10 +27,15 @@ func TestAddFunds(t *testing.T) {
 
 func TestGetUserInfo(t *testing.T) {
 	db := RedisDatabase{"tcp", ":6379"}
-	_, error := db.GetUserInfo("AAA")
+	dollar, _ := decimal.NewFromString("23.01")
+	db.AddFunds("AAA", dollar)
+	r, error := db.GetUserInfo("AAA")
 	if error != nil {
 		t.Error(error)
+	} else {
+		fmt.Println("%v", r)
 	}
+	db.DeleteKey("AAA:Balance")
 }
 
 func TestRemoveFunds(t *testing.T) {
@@ -71,7 +77,7 @@ func TestStocks(t *testing.T) {
 
 	amt, _ := db.GetStock("F", "stockname")
 	if amt != 22 {
-		t.Error("Wrong value for stocks")
+		t.Error("Wrong value for stocks, should be 22, is ", amt)
 	}
 
 	amt, _ = db.GetStock("F", "wrongstockname")
