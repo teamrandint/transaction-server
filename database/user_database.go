@@ -110,6 +110,7 @@ func (u RedisDatabase) GetBuyTrigger(user string, stock string) (*triggers.Trigg
 func (u RedisDatabase) GetStock(user string, stock string) (int, error) {
 	conn := u.getConn()
 	resp, err := redis.Int(conn.Do("HGET", user+":Stocks", stock))
+	conn.Close()
 	return resp, err
 }
 
@@ -117,6 +118,7 @@ func (u RedisDatabase) GetStock(user string, stock string) (int, error) {
 func (u RedisDatabase) RemoveStock(user string, stock string, amount int) error {
 	conn := u.getConn()
 	_, err := conn.Do("HINCRBY", user+":Stocks", stock, -amount)
+	conn.Close()
 	return err
 }
 
@@ -179,6 +181,7 @@ func (u RedisDatabase) RemoveFunds(user string, amount decimal.Decimal) error {
 func (u RedisDatabase) AddStock(user string, stock string, shares int) error {
 	conn := u.getConn()
 	_, err := conn.Do("HSET", user+":Stocks", stock, shares)
+	conn.Close()
 	return err
 }
 
