@@ -7,7 +7,6 @@ import (
 	"seng468/transaction-server/quote"
 	"seng468/transaction-server/socketserver"
 	"seng468/transaction-server/trigger"
-
 	"github.com/shopspring/decimal"
 )
 
@@ -25,7 +24,7 @@ type TransactionServer struct {
 func main() {
 	serverAddr := "localhost:8888"
 	databaseAddr := "localhost:6379"
-	auditAddr := "localhost:8080"
+	auditAddr := "http://localhost:8080"
 
 	server := socketserver.NewSocketServer(serverAddr)
 	database := &database.RedisDatabase{Addr: databaseAddr}
@@ -69,13 +68,13 @@ func (ts TransactionServer) Add(params ...string) string {
 	user := params[0]
 	amount, err := decimal.NewFromString(params[1])
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "ADD", user, nil, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "ADD", user, nil, nil, nil,
 			"Could not parse add amount to decimal")
 		return "-1"
 	}
 	err = ts.UserDatabase.AddFunds(user, amount)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "ADD", user, nil, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "ADD", user, nil, nil, amount,
 			"Failed to add amount to the database for user")
 	}
 	ts.Logger.AccountTransaction(ts.Name, ts.Server.TransactionNum(), "ADD", user, amount)
@@ -90,7 +89,7 @@ func (ts TransactionServer) Quote(params ...string) string {
 	stock := params[1]
 	dec, err := ts.QuoteClient.Query(user, stock, ts.Server.TransactionNum())
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "QUOTE", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "QUOTE", user, stock, nil, nil,
 			err.Error())
 		return "-1"
 	}
@@ -106,43 +105,43 @@ func (ts TransactionServer) Buy(params ...string) string {
 	stock := params[1]
 	amount, err := decimal.NewFromString(params[2])
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "BUY", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "BUY", user, stock, nil, nil,
 			"Could not parse add amount to decimal")
 		return "-1"
 	}
 	curr, err := ts.UserDatabase.GetFunds(user)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "BUY", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "BUY", user, stock, nil, amount,
 			fmt.Sprintf("Error connecting to the database to get funds: %s", err.Error()))
 		return "-1"
 	}
 	if curr.LessThan(amount) {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "BUY", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "BUY", user, stock, nil, amount,
 			"Not enough funds to issue buy order")
 		return "-1"
 	}
 
 	cost, shares, err := ts.getMaxPurchase(user, stock, amount, nil)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "BUY", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "BUY", user, stock, nil, amount,
 			fmt.Sprintf("Error connecting to the quote server: %s", err.Error()))
 		return "-1"
 	}
 
 	err = ts.UserDatabase.RemoveFunds(user, cost)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "BUY", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "BUY", user, stock, nil, amount,
 			fmt.Sprintf("Error connecting to the database to remove funds: %s", err.Error()))
 		return "-1"
 	}
 	err = ts.UserDatabase.PushBuy(user, stock, cost, shares)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "BUY", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "BUY", user, stock, nil, amount,
 			fmt.Sprintf("Error connecting to the database to push buy command: %s", err.Error()))
 		return "-1"
 	}
 
-	ts.Logger.AccountTransaction(ts.Name, ts.Server.TransactionNum(), "remove", user, amount)
+	go ts.Logger.AccountTransaction(ts.Name, ts.Server.TransactionNum(), "remove", user, amount)
 	return "1"
 }
 
@@ -154,17 +153,17 @@ func (ts TransactionServer) Buy(params ...string) string {
 // 		(b) the user's account for the given stock is increased by the purchase amount
 func (ts TransactionServer) CommitBuy(params ...string) string {
 	user := params[0]
-	ts.Logger.SystemEvent(ts.Name, ts.Server.TransactionNum(), "COMMIT_BUY", user, nil, nil, nil)
+	go ts.Logger.SystemEvent(ts.Name, ts.Server.TransactionNum(), "COMMIT_BUY", user, nil, nil, nil)
 	stock, _, shares, err := ts.UserDatabase.PopBuy(user)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "COMMIT_BUY", user, nil, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "COMMIT_BUY", user, nil, nil, nil,
 			fmt.Sprintf("Error connecting to database to pop command: %s", err.Error()))
 		return "-1"
 	}
 
 	err = ts.UserDatabase.AddStock(user, stock, shares)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "COMMIT_BUY", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "COMMIT_BUY", user, stock, nil, nil,
 			fmt.Sprintf("Error connecting to database to add stock: %s", err.Error()))
 		return "-1"
 	}
@@ -179,14 +178,14 @@ func (ts TransactionServer) CancelBuy(params ...string) string {
 	user := params[0]
 	stock, cost, _, err := ts.UserDatabase.PopBuy(user)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_BUY", user, nil, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_BUY", user, nil, nil, nil,
 			fmt.Sprintf("Error connecting to database to pop command: %s", err.Error()))
 		return "-1"
 	}
 
 	err = ts.UserDatabase.AddFunds(user, cost)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_BUY", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_BUY", user, stock, nil, nil,
 			fmt.Sprintf("Error connecting to database to add funds: %s", err.Error()))
 		return "-1"
 	}
@@ -204,33 +203,33 @@ func (ts TransactionServer) Sell(params ...string) string {
 	stock := params[1]
 	amount, err := decimal.NewFromString(params[2])
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SELL", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SELL", user, stock, nil, nil,
 			"Could not parse add amount to decimal")
 		return "-1"
 	}
 	cost, shares, err := ts.getMaxPurchase(user, stock, amount, nil)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SELL", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SELL", user, stock, nil, amount,
 			fmt.Sprintf("Could not connect to the quote server: %s", err.Error()))
 		return "-1"
 	}
 	curr, err := ts.UserDatabase.GetStock(user, stock)
 	if curr < shares {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SELL", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SELL", user, stock, nil, amount,
 			"Cannot sell more stock than you own")
 		return "-1"
 	}
 
 	err = ts.UserDatabase.RemoveStock(user, stock, shares)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SELL", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SELL", user, stock, nil, amount,
 			fmt.Sprintf("Error removing stock from database: %s", err.Error()))
 		return "-1"
 	}
 
 	err = ts.UserDatabase.PushSell(user, stock, cost, shares)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SELL", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SELL", user, stock, nil, amount,
 			fmt.Sprintf("Error pushing sell command to database: %s", err.Error()))
 		return "-1"
 	}
@@ -245,17 +244,17 @@ func (ts TransactionServer) Sell(params ...string) string {
 // 		(b) the user's cash account is increased by the sell amount
 func (ts TransactionServer) CommitSell(params ...string) string {
 	user := params[0]
-	ts.Logger.SystemEvent(ts.Name, ts.Server.TransactionNum(), "COMMIT_SELL", user, nil, nil, nil)
+	go ts.Logger.SystemEvent(ts.Name, ts.Server.TransactionNum(), "COMMIT_SELL", user, nil, nil, nil)
 	stock, cost, _, err := ts.UserDatabase.PopSell(user)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "COMMIT_SELL", user, nil, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "COMMIT_SELL", user, nil, nil, nil,
 			fmt.Sprintf("Error connecting to database to pop command: %s", err.Error()))
 		return "-1"
 	}
 
 	err = ts.UserDatabase.AddFunds(user, cost)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "COMMIT_SELL", user, stock, nil, cost,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "COMMIT_SELL", user, stock, nil, cost,
 			fmt.Sprintf("Error connecting to database to add funds: %s", err.Error()))
 		return "-1"
 	}
@@ -271,14 +270,14 @@ func (ts TransactionServer) CancelSell(params ...string) string {
 	user := params[0]
 	stock, _, shares, err := ts.UserDatabase.PopSell(user)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SELL", user, nil, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SELL", user, nil, nil, nil,
 			fmt.Sprintf("Error connecting to database to pop command: %s", err.Error()))
 		return "-1"
 	}
 
 	err = ts.UserDatabase.AddStock(user, stock, shares)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SELL", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SELL", user, stock, nil, nil,
 			fmt.Sprintf("Error connecting to database to add stock: %s", err.Error()))
 		return "-1"
 	}
@@ -301,26 +300,26 @@ func (ts TransactionServer) SetBuyAmount(params ...string) string {
 	stock := params[1]
 	amount, err := decimal.NewFromString(params[2])
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil, nil,
 			"Could not parse add amount to decimal")
 		return "-1"
 	}
 
 	curr, err := ts.UserDatabase.GetFunds(user)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil, amount,
 			fmt.Sprintf("Could not get funds from database: %s", err.Error()))
 		return "-1"
 	}
 	if curr.LessThan(amount) {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil, amount,
 			"Not enough funds to execute command")
 		return "-1"
 	}
 
 	err = ts.UserDatabase.RemoveFunds(user, amount)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil, amount,
 			fmt.Sprintf("Error removing funds from database:  %s", err.Error()))
 		return "-1"
 	}
@@ -328,7 +327,7 @@ func (ts TransactionServer) SetBuyAmount(params ...string) string {
 	trig := triggers.NewBuyTrigger(user, stock, ts.QuoteClient, amount, ts.buyExecute)
 	err = ts.UserDatabase.AddBuyTrigger(user, stock, trig)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_AMOUNT", user, stock, nil, amount,
 			fmt.Sprintf("Error adding buy trigger to database:  %s", err.Error()))
 		return "-1"
 	}
@@ -347,14 +346,14 @@ func (ts TransactionServer) CancelSetBuy(params ...string) string {
 	stock := params[1]
 	trigger, err := ts.UserDatabase.RemoveBuyTrigger(user, stock)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_BUY", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_BUY", user, stock, nil, nil,
 			fmt.Sprintf("Error getting buy trigger:  %s", err.Error()))
 		return "-1"
 	}
 
 	err = ts.UserDatabase.AddFunds(user, trigger.BuySellAmount)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_BUY", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_BUY", user, stock, nil, nil,
 			fmt.Sprintf("Error adding funds:  %s", err.Error()))
 		return "-1"
 	}
@@ -375,13 +374,13 @@ func (ts TransactionServer) SetBuyTrigger(params ...string) string {
 	stock := params[1]
 	triggerAmount, err := decimal.NewFromString(params[2])
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_TRIGGER", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_TRIGGER", user, stock, nil, nil,
 			"Could not parse add amount to decimal")
 		return "-1"
 	}
 	trig, err := ts.UserDatabase.GetBuyTrigger(user, stock)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_TRIGGER", user, stock, nil, triggerAmount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_BUY_TRIGGER", user, stock, nil, triggerAmount,
 			fmt.Sprintf("Could not get buy trigger from database: %s", err.Error()))
 		return "-1"
 	}
@@ -401,27 +400,27 @@ func (ts TransactionServer) SetSellAmount(params ...string) string {
 	stock := params[1]
 	amount, err := decimal.NewFromString(params[2])
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_AMOUNT", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_AMOUNT", user, stock, nil, nil,
 			"Could not parse add amount to decimal")
 		return "-1"
 	}
 
 	_, shares, err := ts.getMaxPurchase(user, stock, amount, nil)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_AMOUNT", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_AMOUNT", user, stock, nil, amount,
 			fmt.Sprintf("Could not connect to quote server: %s", err.Error()))
 		return "-1"
 	}
 
 	curr, err := ts.UserDatabase.GetStock(user, stock)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_AMOUNT", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_AMOUNT", user, stock, nil, amount,
 			fmt.Sprintf("Could not get stock from database: %s", err.Error()))
 		return "-1"
 	}
 
 	if shares > curr {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_AMOUNT", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_AMOUNT", user, stock, nil, amount,
 			"Cannot set sell trigger for more stock than you own")
 		return "-1"
 	}
@@ -429,7 +428,7 @@ func (ts TransactionServer) SetSellAmount(params ...string) string {
 	trig := triggers.NewSellTrigger(user, stock, ts.QuoteClient, amount, ts.sellExecute)
 	err = ts.UserDatabase.AddSellTrigger(user, stock, trig)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_AMOUNT", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_AMOUNT", user, stock, nil, amount,
 			fmt.Sprintf("Could not add sell trigger to database: %s", err.Error()))
 		return "-1"
 	}
@@ -454,33 +453,33 @@ func (ts TransactionServer) SetSellTrigger(params ...string) string {
 	stock := params[1]
 	amount, err := decimal.NewFromString(params[2])
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_TRIGGER", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_TRIGGER", user, stock, nil, nil,
 			"Could not parse add amount to decimal")
 		return "-1"
 	}
 
 	trig, err := ts.UserDatabase.GetSellTrigger(user, stock)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_TRIGGER", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_TRIGGER", user, stock, nil, amount,
 			fmt.Sprintf("Could not get sell trigger to database: %s", err.Error()))
 		return "-1"
 	}
 
 	_, shares, err := ts.getMaxPurchase(user, stock, amount, nil)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_TRIGGER", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_TRIGGER", user, stock, nil, amount,
 			fmt.Sprintf("Could not connect to quote server: %s", err.Error()))
 		return "-1"
 	}
 	err = ts.UserDatabase.RemoveStock(user, stock, shares)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_TRIGGER", user, stock, nil, amount,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "SET_SELL_TRIGGER", user, stock, nil, amount,
 			fmt.Sprintf("Could not remove stock from database: %s", err.Error()))
 		return "-1"
 	}
 
 	trig.Start(amount, ts.Server.TransactionNum())
-	ts.Logger.SystemEvent(ts.Name, ts.Server.TransactionNum(), "SET_SELL_TRIGGER", user, stock, nil, amount)
+	go ts.Logger.SystemEvent(ts.Name, ts.Server.TransactionNum(), "SET_SELL_TRIGGER", user, stock, nil, amount)
 	return "1"
 
 }
@@ -495,7 +494,7 @@ func (ts TransactionServer) CancelSetSell(params ...string) string {
 	stock := params[1]
 	trigger, err := ts.UserDatabase.RemoveSellTrigger(user, stock)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_SELL", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_SELL", user, stock, nil, nil,
 			fmt.Sprintf("Error getting buy trigger:  %s", err.Error()))
 		return "-1"
 	}
@@ -503,7 +502,7 @@ func (ts TransactionServer) CancelSetSell(params ...string) string {
 	_, reserved, _ := ts.getMaxPurchase(user, stock, trigger.BuySellAmount, trigger.TriggerAmount)
 	err = ts.UserDatabase.AddStock(user, stock, reserved)
 	if err != nil {
-		ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_SELL", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_SELL", user, stock, nil, nil,
 			fmt.Sprintf("Error adding stock to database:  %s", err.Error()))
 		return "-1"
 	}
@@ -517,7 +516,7 @@ func (ts TransactionServer) CancelSetSell(params ...string) string {
 func (ts TransactionServer) DumpLogUser(params ...string) string {
 	filename := params[0]
 	user := params[1]
-	ts.Logger.DumpLog(filename, user)
+	go ts.Logger.DumpLog(filename, user)
 	return "1"
 }
 
@@ -526,7 +525,7 @@ func (ts TransactionServer) DumpLogUser(params ...string) string {
 // Can only be executed from the supervisor (root/administrator) account.
 func (ts TransactionServer) DumpLog(params ...string) string {
 	filename := params[0]
-	ts.Logger.DumpLog(filename, nil)
+	go ts.Logger.DumpLog(filename, nil)
 	return "1"
 }
 
