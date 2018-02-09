@@ -354,6 +354,7 @@ func (ts TransactionServer) CancelSetBuy(params ...string) string {
 		return "-1"
 	}
 	trigger.Cancel()
+	delete(ts.BuyTriggers, user+","+stock)
 	return "1"
 }
 
@@ -495,6 +496,7 @@ func (ts TransactionServer) CancelSetSell(params ...string) string {
 	}
 
 	trigger.Cancel()
+	delete(ts.SellTriggers, user+","+stock)
 	return "1"
 }
 
@@ -551,9 +553,10 @@ func (ts TransactionServer) sellExecute(trigger *triggers.Trigger) {
 	}
 
 	_, reserved, _ := ts.getMaxPurchase(trigger.User, trigger.Stock, trigger.BuySellAmount, trigger.TriggerAmount)
+	//TODO get these amounts from reserve account
 	ts.UserDatabase.AddFunds(trigger.User, cost)
 	ts.UserDatabase.AddStock(trigger.User, trigger.Stock, reserved-shares)
-	ts.UserDatabase.RemoveBuyTrigger(trigger.User, trigger.Stock)
+	delete(ts.SellTriggers, trigger.User+","+trigger.Stock)
 }
 
 func (ts TransactionServer) buyExecute(trigger *triggers.Trigger) {
@@ -564,7 +567,8 @@ func (ts TransactionServer) buyExecute(trigger *triggers.Trigger) {
 	}
 	ts.UserDatabase.AddFunds(trigger.User, trigger.BuySellAmount.Sub(cost))
 	ts.UserDatabase.AddStock(trigger.User, trigger.Stock, shares)
-	ts.UserDatabase.RemoveBuyTrigger(trigger.User, trigger.Stock)
+	//TODO get these amounts from reserve account
+	delete(ts.BuyTriggers, trigger.User+","+trigger.Stock)
 }
 
 func (ts TransactionServer) getMaxPurchase(user string, stock string, amount decimal.Decimal, stockPrice interface{}) (money decimal.Decimal, shares int, err error) {
