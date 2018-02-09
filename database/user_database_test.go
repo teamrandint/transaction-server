@@ -64,3 +64,32 @@ func TestGetFunds(t *testing.T) {
 	}
 	db.DeleteKey("fundGetter:Balance")
 }
+
+func TestStocks(t *testing.T) {
+	db := RedisDatabase{"tcp", ":6379"}
+	db.AddStock("F", "stockname", 22)
+
+	amt, _ := db.GetStock("F", "stockname")
+	if amt != 22 {
+		t.Error("Wrong value for stocks")
+	}
+
+	amt, _ = db.GetStock("F", "wrongstockname")
+	if amt != 0 {
+		t.Error("Should get no value for stocks")
+	}
+
+	err := db.RemoveStock("F", "stockname", 2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	amt, err = db.GetStock("F", "stockname")
+	if amt != 20 {
+		t.Error("Failed to remove stock")
+	} else if err != nil {
+		t.Error(err)
+	}
+
+	db.DeleteKey("F:Stocks")
+}

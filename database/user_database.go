@@ -108,12 +108,16 @@ func (u RedisDatabase) GetBuyTrigger(user string, stock string) (*triggers.Trigg
 
 // GetStock returns the users available balance of said stock
 func (u RedisDatabase) GetStock(user string, stock string) (int, error) {
-	panic("implement me")
+	conn := u.getConn()
+	resp, err := redis.Int(conn.Do("HGET", user+":Stocks", stock))
+	return resp, err
 }
 
 // RemoveStock removes int stocks from the users account
 func (u RedisDatabase) RemoveStock(user string, stock string, amount int) error {
-	panic("implement me")
+	conn := u.getConn()
+	_, err := conn.Do("HINCRBY", user+":Stocks", stock, -amount)
+	return err
 }
 
 // PushSell adds a record of the users requested sell to their account
@@ -173,7 +177,9 @@ func (u RedisDatabase) RemoveFunds(user string, amount decimal.Decimal) error {
 
 // AddStock adds shares to the user account
 func (u RedisDatabase) AddStock(user string, stock string, shares int) error {
-	return nil
+	conn := u.getConn()
+	_, err := conn.Do("HSET", user+":Stocks", stock, shares)
+	return err
 }
 
 // DeleteKey deletes a key in the database
