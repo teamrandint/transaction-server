@@ -140,7 +140,7 @@ func (u RedisDatabase) PopBuy(user string) (stock string, cost decimal.Decimal, 
 // AddFunds adds amount dollars to the user account
 func (u RedisDatabase) AddFunds(user string, amount decimal.Decimal) error {
 	conn := u.getConn()
-	_, err := conn.Do("INCRBYFLOAT", user+":balance", amount)
+	_, err := conn.Do("INCRBYFLOAT", user+":Balance", amount)
 	if err != nil {
 		panic(err)
 	}
@@ -150,11 +150,24 @@ func (u RedisDatabase) AddFunds(user string, amount decimal.Decimal) error {
 
 // GetFunds returns the amount of available funds in a users account
 func (u RedisDatabase) GetFunds(user string) (decimal.Decimal, error) {
-	return decimal.NewFromFloat(0), nil
+	conn := u.getConn()
+	r, err := redis.String(conn.Do("GET", user+":Balance"))
+	if err != nil {
+		panic(err)
+	}
+	conn.Close()
+	receivedValue, err := decimal.NewFromString(r)
+	return receivedValue, err
 }
 
 // RemoveFunds remove n funds from the user's account
 func (u RedisDatabase) RemoveFunds(user string, amount decimal.Decimal) error {
+	conn := u.getConn()
+	_, err := conn.Do("INCRBYFLOAT", user+":Balance", amount.Neg())
+	if err != nil {
+		panic(err)
+	}
+	conn.Close()
 	return nil
 }
 

@@ -28,3 +28,34 @@ func TestGetUserInfo(t *testing.T) {
 	r, _ := db.GetUserInfo("AAA")
 	t.Log(r)
 }
+
+func TestRemoveFunds(t *testing.T) {
+	db := RedisDatabase{"tcp", ":6379"}
+	dollar, err := decimal.NewFromString("23.01")
+	err2 := db.AddFunds("F", dollar)
+	if err != nil || err2 != nil {
+		t.Error(err, err2)
+	}
+	err = db.RemoveFunds("F", dollar)
+	zero, _ := db.GetFunds("F")
+
+	if zero.String() != "0" {
+		t.Error("Account should be 0")
+	}
+}
+
+func TestGetFunds(t *testing.T) {
+	db := RedisDatabase{"tcp", ":6379"}
+	dollar, err := decimal.NewFromString("23.01")
+
+	err2 := db.AddFunds("fundGetter", dollar)
+	amount, err2 := db.GetFunds("fundGetter")
+
+	if err != nil || err2 != nil {
+		t.Error(err, err2)
+	}
+
+	if amount.String() != dollar.String() {
+		t.Error("Amounts not equal, 23.01,", amount)
+	}
+}
