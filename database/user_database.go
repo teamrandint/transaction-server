@@ -175,3 +175,11 @@ func (u RedisDatabase) RemoveFunds(user string, amount decimal.Decimal) error {
 func (u RedisDatabase) AddStock(user string, stock string, shares int) error {
 	return nil
 }
+
+// DeleteKey deletes a key in the database
+// use this function with caution...
+func (u RedisDatabase) DeleteKey(key string) {
+	conn := u.getConn()
+	conn.Do("DEL", key)
+	conn.Close()
+}

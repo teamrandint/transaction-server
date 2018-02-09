@@ -21,12 +21,15 @@ func TestAddFunds(t *testing.T) {
 	if err != nil || err2 != nil {
 		t.Error(err, err2)
 	}
+	db.DeleteKey("AAA")
 }
 
 func TestGetUserInfo(t *testing.T) {
 	db := RedisDatabase{"tcp", ":6379"}
-	r, _ := db.GetUserInfo("AAA")
-	t.Log(r)
+	_, error := db.GetUserInfo("AAA")
+	if error != nil {
+		t.Error(error)
+	}
 }
 
 func TestRemoveFunds(t *testing.T) {
@@ -42,6 +45,7 @@ func TestRemoveFunds(t *testing.T) {
 	if zero.String() != "0" {
 		t.Error("Account should be 0")
 	}
+	db.DeleteKey("F:Balance")
 }
 
 func TestGetFunds(t *testing.T) {
@@ -58,4 +62,5 @@ func TestGetFunds(t *testing.T) {
 	if amount.String() != dollar.String() {
 		t.Error("Amounts not equal, 23.01,", amount)
 	}
+	db.DeleteKey("fundGetter:Balance")
 }
