@@ -1,6 +1,7 @@
 package socketserver
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"os"
@@ -34,6 +35,7 @@ func getParamsFromRegex(regex string, msg string) []string {
 	match := re.FindAllStringSubmatch(msg, -1)[0]
 	var params []string
 	for _, m := range match {
+		m = string(bytes.Trim([]byte(m), "\x00"))
 		params = append(params, m)
 	}
 	return params[1:]
