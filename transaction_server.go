@@ -7,23 +7,24 @@ import (
 	"seng468/transaction-server/quote"
 	"seng468/transaction-server/socketserver"
 	"seng468/transaction-server/trigger"
+
 	"github.com/shopspring/decimal"
 )
 
 // TransactionServer holds the main components of the module itself
 type TransactionServer struct {
-	Name            string
-	Addr            string
-	Server          socketserver.Server
-	Logger          logger.Logger
-	UserDatabase    database.UserDatabase
-	QuoteClient     quoteclient.QuoteClientI
-	BuyTriggers map[string]*triggers.Trigger
+	Name         string
+	Addr         string
+	Server       socketserver.Server
+	Logger       logger.Logger
+	UserDatabase database.UserDatabase
+	QuoteClient  quoteclient.QuoteClientI
+	BuyTriggers  map[string]*triggers.Trigger
 	SellTriggers map[string]*triggers.Trigger
 }
 
 func main() {
-	serverAddr := "localhost:8888"
+	serverAddr := "localhost:8000"
 	databaseAddr := "localhost:6379"
 	auditAddr := "http://localhost:8080"
 
@@ -35,14 +36,14 @@ func main() {
 	quoteClient := quoteclient.NewQuoteClient(logger)
 
 	ts := &TransactionServer{
-		Name:            "transactionserve",
-		Addr:            serverAddr,
-		Server:          server,
-		Logger:          logger,
-		UserDatabase:    database,
-		QuoteClient:     quoteClient,
-		BuyTriggers:	 buyTriggers,
-		SellTriggers:    sellTriggers,
+		Name:         "transactionserve",
+		Addr:         serverAddr,
+		Server:       server,
+		Logger:       logger,
+		UserDatabase: database,
+		QuoteClient:  quoteClient,
+		BuyTriggers:  buyTriggers,
+		SellTriggers: sellTriggers,
 	}
 
 	server.Route("ADD,<user>,<amount>", ts.Add)
