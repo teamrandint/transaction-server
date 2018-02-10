@@ -17,7 +17,7 @@ type TransactionServer struct {
 	Addr         string
 	Server       socketserver.Server
 	Logger       logger.Logger
-	UserDatabase database.UserDatabase
+	UserDatabase database.RedisDatabase
 	QuoteClient  quoteclient.QuoteClientI
 	BuyTriggers  map[string]*triggers.Trigger
 	SellTriggers map[string]*triggers.Trigger
@@ -25,11 +25,12 @@ type TransactionServer struct {
 
 func main() {
 	serverAddr := "localhost:8000"
-	databaseAddr := "localhost:6379"
+	databaseAddr := "tcp"
+	databasePort := "localhost:6379"
 	auditAddr := "http://localhost:8080"
 
 	server := socketserver.NewSocketServer(serverAddr)
-	database := &database.RedisDatabase{Addr: databaseAddr}
+	database := database.RedisDatabase{Addr: databaseAddr, Port: databasePort}
 	logger := logger.AuditLogger{Addr: auditAddr}
 	buyTriggers := make(map[string]*triggers.Trigger)
 	sellTriggers := make(map[string]*triggers.Trigger)
@@ -83,7 +84,7 @@ func (ts TransactionServer) Add(params ...string) string {
 			"Failed to add amount to the database for user")
 		return "-1"
 	}
-	ts.Logger.AccountTransaction(ts.Name, ts.Server.TransactionNum(), "ADD", user, amount)
+	go ts.Logger.AccountTransaction(ts.Name, ts.Server.TransactionNum(), "ADD", user, amount)
 	return "1"
 }
 
@@ -500,28 +501,28 @@ func (ts TransactionServer) CancelSetSell(params ...string) string {
 	stock := params[1]
 	trigger := ts.getSellTrigger(user, stock)
 	if trigger == nil {
-		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SELL_TRIGGER", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_SELL", user, stock, nil, nil,
 			"No existing sell trigger for this user and stock")
 		return "-1"
 	}
 
 	reserved, err := ts.UserDatabase.GetReserveStock(user, stock)
 	if err != nil {
-		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_TRIGGER", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_SELL", user, stock, nil, nil,
 			fmt.Sprintf("Error getting reserved stock from database:  %s", err.Error()))
 		return "-1"
 	}
 
 	err = ts.UserDatabase.RemoveReserveStock(user, stock, reserved)
 	if err != nil {
-		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_TRIGGER", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_SELL", user, stock, nil, nil,
 			fmt.Sprintf("Error removing reserved stock from database:  %s", err.Error()))
 		return "-1"
 	}
 
 	err = ts.UserDatabase.AddStock(user, stock, reserved)
 	if err != nil {
-		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_TRIGGER", user, stock, nil, nil,
+		go ts.Logger.SystemError(ts.Name, ts.Server.TransactionNum(), "CANCEL_SET_SELL", user, stock, nil, nil,
 			fmt.Sprintf("Error adding stock to database:  %s", err.Error()))
 		return "-1"
 	}

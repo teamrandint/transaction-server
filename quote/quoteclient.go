@@ -50,7 +50,7 @@ func (q *QuoteClient) Query(u string, s string, transNum int) (decimal.Decimal, 
 		d, _ := decimal.NewFromString(quote.(string))
 		return d, nil
 	}
-	conn, err := net.Dial("tcp", q.addr)
+	conn, err := net.DialTimeout("tcp", q.addr, 30*time.Millisecond)
 	if err != nil {
 		return decimal.Decimal{}, err
 	}
@@ -63,7 +63,7 @@ func (q *QuoteClient) Query(u string, s string, transNum int) (decimal.Decimal, 
 	reply := q.getReply(message)
 	q.logger.QuoteServer(q.name, transNum, reply.quote.String(), reply.stock,
 		reply.user, reply.time, reply.key)
-	q.cache.Set(reply.stock, reply.quote, cache.DefaultExpiration)
+	q.cache.Set(reply.stock, reply.quote.String(), cache.DefaultExpiration)
 	conn.Close()
 	return reply.quote, nil
 }

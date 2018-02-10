@@ -66,6 +66,7 @@ func (s SocketServer) Run() {
 			fmt.Println("Error accepting: ", err.Error())
 			continue
 		}
+		s.transNum++
 		go s.handleRequest(conn)
 	}
 }
@@ -100,7 +101,6 @@ func (s SocketServer) handleRequest(conn net.Conn) {
 		fmt.Printf("Error: command not implemented '%s'\n", string(buf[:]))
 		return
 	}
-	s.transNum++
 	fmt.Println(string(buf[:]))
 	res := function(params...)
 	// Send a response back to person contacting us.
