@@ -8,24 +8,17 @@ import (
 	"regexp"
 )
 
-type Server interface {
-	TransactionNum() int
-}
 
 type SocketServer struct {
 	addr     string
-	routeMap map[string]func(args ...string) string
+	routeMap map[string]func(transNum int, args ...string) string
 	transNum int
-}
-
-func (s SocketServer) TransactionNum() int {
-	return s.transNum
 }
 
 func NewSocketServer(addr string) SocketServer {
 	return SocketServer{
 		addr:     addr,
-		routeMap: make(map[string]func(args ...string) string),
+		routeMap: make(map[string]func(transNum int, args ...string) string),
 		transNum: 0,
 	}
 }
@@ -46,7 +39,7 @@ func (s SocketServer) buildRoutePattern(pattern string) string {
 	return re.ReplaceAllString(pattern, `(.+)`) // `(?P\1.+)`
 }
 
-func (s SocketServer) Route(pattern string, f func(args ...string) string) {
+func (s SocketServer) Route(pattern string, f func(transNum int, args ...string) string) {
 	regex := s.buildRoutePattern(pattern)
 	s.routeMap[regex] = f
 }
@@ -66,12 +59,12 @@ func (s SocketServer) Run() {
 			fmt.Println("Error accepting: ", err.Error())
 			continue
 		}
-		s.transNum++
-		go s.handleRequest(conn)
+		s.transNum = s.transNum + 1
+		go s.handleRequest(conn, s.transNum)
 	}
 }
 
-func (s SocketServer) getRoute(command string) (func(args ...string) string, []string) {
+func (s SocketServer) getRoute(command string) (func(transNum int, args ...string) string, []string) {
 	for regex, function := range s.routeMap {
 		re, err := regexp.Compile(regex)
 		if err != nil {
@@ -87,7 +80,7 @@ func (s SocketServer) getRoute(command string) (func(args ...string) string, []s
 }
 
 // Handles incoming requests.
-func (s SocketServer) handleRequest(conn net.Conn) {
+func (s SocketServer) handleRequest(conn net.Conn, transNum int) {
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
 	// Read the incoming connection into the buffer.
@@ -102,7 +95,7 @@ func (s SocketServer) handleRequest(conn net.Conn) {
 		return
 	}
 	fmt.Println(string(buf[:]))
-	res := function(params...)
+	res := function(transNum, params...)
 	// Send a response back to person contacting us.
 	conn.Write([]byte(res))
 	// Close the connection when you're done with it.

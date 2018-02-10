@@ -61,7 +61,7 @@ func (q *QuoteClient) Query(u string, s string, transNum int) (decimal.Decimal, 
 		return decimal.Decimal{}, err
 	}
 	reply := q.getReply(message)
-	q.logger.QuoteServer(q.name, transNum, reply.quote.String(), reply.stock,
+	go q.logger.QuoteServer(q.name, transNum, reply.quote.String(), reply.stock,
 		reply.user, reply.time, reply.key)
 	q.cache.Set(reply.stock, reply.quote.String(), cache.DefaultExpiration)
 	conn.Close()
