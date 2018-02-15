@@ -189,6 +189,11 @@ func (ts TransactionServer) CancelBuy(transNum int, params ...string) string {
 			fmt.Sprintf("Error connecting to database to pop command: %s", err.Error()))
 		return "-1"
 	}
+	if stock == "" {
+		go ts.Logger.SystemError(ts.Name, transNum, "CANCEL_BUY", user, nil, nil, nil,
+			"No pending buy orders to pop")
+		return "-1"
+	}
 
 	err = ts.UserDatabase.AddFunds(user, cost)
 	if err != nil {

@@ -141,9 +141,15 @@ func (u RedisDatabase) encodeOrder(stock string, cost decimal.Decimal, shares in
 // Performs the opposite of encodeOrder
 func (u RedisDatabase) decodeOrder(order string) (stock string, cost decimal.Decimal, shares int) {
 	split := strings.Split(order, ":")
-	stock = split[0]
-	cost, _ = decimal.NewFromString(split[1])
-	shares, _ = strconv.Atoi(split[2])
+	if len(split) == 3 {
+		stock = split[0]
+		cost, _ = decimal.NewFromString(split[1])
+		shares, _ = strconv.Atoi(split[2])
+	} else {
+		stock = ""
+		cost, _ = decimal.NewFromString("0")
+		shares = 0
+	}
 
 	return stock, cost, shares
 }
