@@ -6,13 +6,14 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 )
-
 
 type SocketServer struct {
 	addr     string
 	routeMap map[string]func(transNum int, args ...string) string
-	transNum int
+	transNum int64
 }
 
 func NewSocketServer(addr string) SocketServer {
@@ -59,8 +60,7 @@ func (s SocketServer) Run() {
 			fmt.Println("Error accepting: ", err.Error())
 			continue
 		}
-		s.transNum = s.transNum + 1
-		go s.handleRequest(conn, s.transNum)
+		go s.handleRequest(conn)
 	}
 }
 
@@ -80,7 +80,7 @@ func (s SocketServer) getRoute(command string) (func(transNum int, args ...strin
 }
 
 // Handles incoming requests.
-func (s SocketServer) handleRequest(conn net.Conn, transNum int) {
+func (s SocketServer) handleRequest(conn net.Conn) {
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
 	// Read the incoming connection into the buffer.
@@ -89,12 +89,15 @@ func (s SocketServer) handleRequest(conn net.Conn, transNum int) {
 		fmt.Println("Error reading:", err.Error())
 		return
 	}
-	function, params := s.getRoute(string(buf[:]))
+	sepTransCommand := strings.Split(string(buf[:]), ";")
+	transNum, _ := strconv.Atoi(sepTransCommand[0])
+	command := sepTransCommand[1]
+	function, params := s.getRoute(command)
 	if function == nil {
-		fmt.Printf("Error: command not implemented '%s'\n", string(buf[:]))
+		fmt.Printf("Error: command not implemented '%s'\n", command)
 		return
 	}
-	fmt.Println(string(buf[:]))
+	fmt.Println(command)
 	res := function(transNum, params...)
 	// Send a response back to person contacting us.
 	conn.Write([]byte(res))
