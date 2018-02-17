@@ -113,7 +113,7 @@ func (ts TransactionServer) Buy(transNum int, params ...string) string {
 	amount, err := decimal.NewFromString(params[2])
 	if err != nil {
 		go ts.Logger.SystemError(ts.Name, transNum, "BUY", user, stock, nil, nil,
-			"Could not parse add amount to decimal")
+			"Could not parse buy amount to decimal")
 		return "-1"
 	}
 	curr, err := ts.UserDatabase.GetFunds(user)
@@ -189,6 +189,11 @@ func (ts TransactionServer) CancelBuy(transNum int, params ...string) string {
 			fmt.Sprintf("Error connecting to database to pop command: %s", err.Error()))
 		return "-1"
 	}
+	if stock == "" {
+		go ts.Logger.SystemError(ts.Name, transNum, "CANCEL_BUY", user, nil, nil, nil,
+			"No pending buy orders to pop")
+		return "-1"
+	}
 
 	err = ts.UserDatabase.AddFunds(user, cost)
 	if err != nil {
@@ -211,7 +216,7 @@ func (ts TransactionServer) Sell(transNum int, params ...string) string {
 	amount, err := decimal.NewFromString(params[2])
 	if err != nil {
 		go ts.Logger.SystemError(ts.Name, transNum, "SELL", user, stock, nil, nil,
-			"Could not parse add amount to decimal")
+			"Could not parse sell amount to decimal")
 		return "-1"
 	}
 	cost, shares, err := ts.getMaxPurchase(user, stock, amount, nil, transNum)
@@ -308,7 +313,7 @@ func (ts TransactionServer) SetBuyAmount(transNum int, params ...string) string 
 	amount, err := decimal.NewFromString(params[2])
 	if err != nil {
 		go ts.Logger.SystemError(ts.Name, transNum, "SET_BUY_AMOUNT", user, stock, nil, nil,
-			"Could not parse add amount to decimal")
+			"Could not parse set buy amount to decimal")
 		return "-1"
 	}
 
@@ -385,7 +390,7 @@ func (ts TransactionServer) SetBuyTrigger(transNum int, params ...string) string
 	triggerAmount, err := decimal.NewFromString(params[2])
 	if err != nil {
 		go ts.Logger.SystemError(ts.Name, transNum, "SET_BUY_TRIGGER", user, stock, nil, nil,
-			"Could not parse add amount to decimal")
+			"Could not parse set buy trigger amount to decimal")
 		return "-1"
 	}
 	trig := ts.getBuyTrigger(user, stock)
@@ -411,7 +416,7 @@ func (ts TransactionServer) SetSellAmount(transNum int, params ...string) string
 	amount, err := decimal.NewFromString(params[2])
 	if err != nil {
 		go ts.Logger.SystemError(ts.Name, transNum, "SET_SELL_AMOUNT", user, stock, nil, nil,
-			"Could not parse add amount to decimal")
+			"Could not parse set sell amount to decimal")
 		return "-1"
 	}
 
@@ -458,7 +463,7 @@ func (ts TransactionServer) SetSellTrigger(transNum int, params ...string) strin
 	amount, err := decimal.NewFromString(params[2])
 	if err != nil {
 		go ts.Logger.SystemError(ts.Name, transNum, "SET_SELL_TRIGGER", user, stock, nil, nil,
-			"Could not parse add amount to decimal")
+			"Could not parse set sell trigger amount to decimal")
 		return "-1"
 	}
 
