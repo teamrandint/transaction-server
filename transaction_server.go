@@ -24,10 +24,10 @@ type TransactionServer struct {
 }
 
 func main() {
-	serverAddr := "localhost:8000"
+	serverAddr := "localhost:44456"
 	databaseAddr := "tcp"
-	databasePort := "localhost:6379"
-	auditAddr := "http://localhost:8080"
+	databasePort := "localhost:44457"
+	auditAddr := "http://localhost:44455"
 
 	server := socketserver.NewSocketServer(serverAddr)
 	database := database.RedisDatabase{Addr: databaseAddr, Port: databasePort}
