@@ -5,6 +5,7 @@ RUN apk add --no-cache git \
     && go get github.com/garyburd/redigo/redis \
     && go get github.com/patrickmn/go-cache \
     && go get github.com/shopspring/decimal \
+    && go get golang.org/x/sync/syncmap \
     && cd /go/src/seng468/transaction-server \
     && go build -o transactionserve
 
