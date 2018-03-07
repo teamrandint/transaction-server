@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"seng468/transaction-server/database"
 	"seng468/transaction-server/logger"
 	"seng468/transaction-server/quote"
@@ -24,10 +25,10 @@ type TransactionServer struct {
 }
 
 func main() {
-	serverAddr := "localhost:44456"
+	serverAddr := os.Getenv("transaddr") + ":" + os.Getenv("transport")
 	databaseAddr := "tcp"
-	databasePort := "localhost:44457"
-	auditAddr := "http://localhost:44455"
+	databasePort := os.Getenv("dbaddr") + ":" + os.Getenv("dbport")
+	auditAddr := "http://" + os.Getenv("auditaddr") + ":" + os.Getenv("auditport")
 
 	server := socketserver.NewSocketServer(serverAddr)
 	database := database.RedisDatabase{Addr: databaseAddr, Port: databasePort}
