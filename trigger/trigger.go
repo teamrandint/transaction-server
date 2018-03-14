@@ -12,7 +12,6 @@ type Trigger struct {
 	User          string
 	Stock         string
 	TransNum      int
-	QuoteClient   quoteclient.QuoteClientI
 	BuySellAmount decimal.Decimal
 	TriggerAmount decimal.Decimal
 	action        func(trig *Trigger)
@@ -20,24 +19,20 @@ type Trigger struct {
 	cancel        chan bool
 }
 
-func NewBuyTrigger(user string, stock string, quoteClient quoteclient.QuoteClientI,
-	buySellAmount decimal.Decimal, action func(*Trigger)) *Trigger {
+func NewBuyTrigger(user string, stock string, buySellAmount decimal.Decimal, action func(*Trigger)) *Trigger {
 	return &Trigger{
 		User:          user,
 		Stock:         stock,
-		QuoteClient:   quoteClient,
 		BuySellAmount: buySellAmount,
 		action:        action,
 		TriggerType:   "BUY",
 	}
 }
 
-func NewSellTrigger(user string, stock string, quoteClient quoteclient.QuoteClientI,
-	buySellAmount decimal.Decimal, action func(trigger *Trigger)) *Trigger {
+func NewSellTrigger(user string, stock string, buySellAmount decimal.Decimal, action func(trigger *Trigger)) *Trigger {
 	return &Trigger{
 		User:          user,
 		Stock:         stock,
-		QuoteClient:   quoteClient,
 		BuySellAmount: buySellAmount,
 		action:        action,
 		TriggerType:   "SELL",
@@ -67,7 +62,7 @@ func (trig Trigger) Cancel() {
 }
 
 func (trig Trigger) testTrigger() {
-	quote, err := trig.QuoteClient.Query(trig.User, trig.Stock, trig.TransNum)
+	quote, err := quoteclient.Query(trig.User, trig.Stock, trig.TransNum)
 	if err != nil {
 		fmt.Println(err.Error())
 		return

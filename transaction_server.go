@@ -20,7 +20,6 @@ type TransactionServer struct {
 	Server       socketserver.SocketServer
 	Logger       logger.Logger
 	UserDatabase database.RedisDatabase
-	QuoteClient  quoteclient.QuoteClientI
 	BuyTriggers  *syncmap.Map
 	SellTriggers *syncmap.Map
 }
@@ -36,7 +35,6 @@ func main() {
 	logger := logger.AuditLogger{Addr: auditAddr}
 	buyTriggers := new(syncmap.Map)
 	sellTriggers := new(syncmap.Map)
-	quoteClient := quoteclient.NewQuoteClient(logger)
 
 	ts := &TransactionServer{
 		Name:         "transactionserve",
@@ -44,7 +42,6 @@ func main() {
 		Server:       server,
 		Logger:       logger,
 		UserDatabase: database,
-		QuoteClient:  quoteClient,
 		BuyTriggers:  buyTriggers,
 		SellTriggers: sellTriggers,
 	}
@@ -96,7 +93,7 @@ func (ts TransactionServer) Add(transNum int, params ...string) string {
 func (ts TransactionServer) Quote(transNum int, params ...string) string {
 	user := params[0]
 	stock := params[1]
-	dec, err := ts.QuoteClient.Query(user, stock, transNum)
+	dec, err := quoteclient.Query(user, stock, transNum)
 	if err != nil {
 		go ts.Logger.SystemError(ts.Name, transNum, "QUOTE", user, stock, nil, nil,
 			err.Error())
@@ -346,7 +343,7 @@ func (ts TransactionServer) SetBuyAmount(transNum int, params ...string) string 
 		return "-1"
 	}
 
-	trig := triggers.NewBuyTrigger(user, stock, ts.QuoteClient, amount, ts.buyExecute)
+	trig := triggers.NewBuyTrigger(user, stock, amount, ts.buyExecute)
 	ts.BuyTriggers.Store(user+","+stock, trig)
 	return "1"
 }
@@ -442,7 +439,7 @@ func (ts TransactionServer) SetSellAmount(transNum int, params ...string) string
 		return "-1"
 	}
 
-	trig := triggers.NewSellTrigger(user, stock, ts.QuoteClient, amount, ts.sellExecute)
+	trig := triggers.NewSellTrigger(user, stock, amount, ts.sellExecute)
 	ts.SellTriggers.Store(user+","+stock, trig)
 	return "1"
 }
@@ -611,7 +608,7 @@ func (ts TransactionServer) buyExecute(trigger *triggers.Trigger) {
 
 func (ts TransactionServer) getMaxPurchase(user string, stock string, amount decimal.Decimal, stockPrice interface{},
 	transNum int) (money decimal.Decimal, shares int, err error) {
-	dec, err := ts.QuoteClient.Query(user, stock, transNum)
+	dec, err := quoteclient.Query(user, stock, transNum)
 	if err != nil {
 		return decimal.Decimal{}, 0, err
 	}
