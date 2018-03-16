@@ -11,6 +11,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"golang.org/x/sync/syncmap"
+	"github.com/pkg/profile"
 )
 
 // TransactionServer holds the main components of the module itself
@@ -25,6 +26,7 @@ type TransactionServer struct {
 }
 
 func main() {
+	defer profile.Start().Stop()
 	serverAddr := os.Getenv("transaddr") + ":" + os.Getenv("transport")
 	databaseAddr := "tcp"
 	databasePort := os.Getenv("dbaddr") + ":" + os.Getenv("dbport")

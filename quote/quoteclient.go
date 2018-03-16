@@ -10,13 +10,15 @@ import (
 	"io/ioutil"
 )
 
-var addr = os.Getenv("quoteaddr")
-var port = os.Getenv("quoteport")
+var addr = os.Getenv("quoteclientaddr")
+var port = os.Getenv("quoteclientport")
 
 func Query(user string, stock string, transNum int) (decimal.Decimal, error) {
-	req, err := http.NewRequest("GET", addr + ":" + port + "/quote", nil)
+	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100
+	req, err := http.NewRequest("GET","http://" + addr + ":" + port + "/quote", nil)
 	if err != nil {
 		log.Print(err)
+		panic(err)
 	}
 	q := req.URL.Query()
 	q.Add("user", user)
